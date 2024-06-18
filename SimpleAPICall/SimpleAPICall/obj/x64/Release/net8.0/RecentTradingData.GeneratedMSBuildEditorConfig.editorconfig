@@ -8,6 +8,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = RecentTradingData
-build_property.ProjectDir = C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\
+build_property.ProjectDir = C:\Users\saeba\Documents\GitHub\recent-trading-data\SimpleAPICall\SimpleAPICall\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 

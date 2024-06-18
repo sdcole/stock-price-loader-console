@@ -28,31 +28,52 @@ namespace CodeExamples
          */
         public static async Task Main(string[] args)
         {
-
-            
-            //Database connection
-            #region CONN
-            NpgsqlConnection conn = new NpgsqlConnection(config["CONN_STRING"]);
-            #endregion
-            conn.Open();
-            NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM STOCKS_TO_CHECK", conn);
-
-            using NpgsqlDataReader rdr = cmd.ExecuteReader();
-            //Create a list of tasks (api calls) to execute.
-            List<Task<bool>> tasks = new List<Task<bool>>();
-
-            //Read through all of the stock tickers found in the database.
-            while (rdr.Read())
+            try
             {
-                //Add task to list
-                tasks.Add(CallAPIAndInsertToDB(rdr.GetString(0)));
-            }
-            //Done using DB release resources
-            conn.Close();
-            //Kick off all tasks (Since the API is IO bound we run multiple to make the program more efficient)
-            await Task.WhenAll(tasks);
+                //Check if Market is open if it is get real time data.
+                var client = Alpaca.Markets.Environments.Live
+                    .GetAlpacaTradingClient(new SecretKey(API_KEY, API_SECRET));
 
+                // Check if the market is open now.
+                var clock = await client.GetClockAsync();
+                if (clock.IsOpen)
+                {
+                    //Database connection
+                    #region CONN
+                    NpgsqlConnection conn = new NpgsqlConnection(config["CONN_STRING"]);
+                    #endregion
+                    conn.Open();
+                    NpgsqlCommand cmd = new NpgsqlCommand("SELECT \"TICKER_SYMBOL\" FROM \"STOCKS_TO_CHECK\"", conn);
+
+                    using NpgsqlDataReader rdr = cmd.ExecuteReader();
+                    //Create a list of tasks (api calls) to execute.
+                    List<Task<bool>> tasks = new List<Task<bool>>();
+
+                    //Read through all of the stock tickers found in the database.
+                    while (rdr.Read())
+                    {
+                        //Add task to list
+                        tasks.Add(CallAPIAndInsertToDB(rdr.GetString(0)));
+
+                    }
+                    //Done using DB release resources
+                    conn.Close();
+                    //Kick off all tasks (Since the API is IO bound we run multiple to make the program more efficient)
+                    await Task.WhenAll(tasks);
+                }
+                else
+                {
+                    //Market is not currently open
+                    Console.WriteLine("Market is closed");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
             
+
+
 
         }
         /**
@@ -84,24 +105,26 @@ namespace CodeExamples
                 DateTime time = (DateTime)jsonObj.SelectToken("trade.t");
 
                 //Connect to DB
-                #region CLOSE
-                NpgsqlConnection conn = new NpgsqlConnection(config["CONN_STRING"]);
-                #endregion
-                conn.Open();
-                //Insert query for the table
-                NpgsqlCommand cmd = new NpgsqlCommand("INSERT INTO RECENT_STOCK_DATA (TICKER_SYMBOL, PRICE, DATE_TIME) VALUES (@ticker,@price,@time)", conn);
-                //Parameters to prevent SQL injection
-                var tick = cmd.Parameters.AddWithValue("@ticker", ticker);
-                var prc = cmd.Parameters.AddWithValue("@price", Double.Parse(price));
-                var tm = cmd.Parameters.AddWithValue("@time", time);
+                using (NpgsqlConnection conn = new NpgsqlConnection(config["CONN_STRING"]))
+                {
+                    conn.Open();
+                    //Insert query for the table
+                    NpgsqlCommand cmd = new NpgsqlCommand("INSERT INTO \"RECENT_STOCK_DATA\" (\"TICKER_SYMBOL\", \"PRICE\", \"TIMESTAMP\") VALUES (@ticker,@price,@time)", conn);
+                    //Parameters to prevent SQL injection
+                    var tick = cmd.Parameters.AddWithValue("@ticker", ticker);
+                    var prc = cmd.Parameters.AddWithValue("@price", Double.Parse(price));
+                    var tm = cmd.Parameters.AddWithValue("@time", time);
 
-                //Run insert query
-                cmd.ExecuteNonQuery();
+                    //Run insert query
+                    cmd.ExecuteNonQuery();
 
-                //Close DB connection
-                conn.Close();
-                //Return true to tell that it successfully ran
-                return true;
+                    //Close DB connection
+                    conn.Close();
+                    //Return true to tell that it successfully ran
+                    return true;
+                }
+
+                    
             }
             catch (Exception ex)
             {

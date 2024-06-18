@@ -20,16 +20,15 @@ C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.AssemblyInfo.cs
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.csproj.CoreCompileInputs.cache
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.sourcelink.json
-C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.csproj.CopyComplete
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\refint\RecentTradingData.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.pdb
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTradingData.genruntimeconfig.cache
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\ref\RecentTradingData.dll
-C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\appconfig.json
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\Microsoft.Extensions.Configuration.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\Microsoft.Extensions.Configuration.FileExtensions.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\Microsoft.Extensions.Configuration.Json.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\Microsoft.Extensions.FileProviders.Abstractions.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\Microsoft.Extensions.FileProviders.Physical.dll
 C:\Users\saeba\Documents\Github\recent-trading-data\SimpleAPICall\SimpleAPICall\bin\x64\Release\net8.0\Microsoft.Extensions.FileSystemGlobbing.dll
+C:\Users\saeba\Documents\GitHub\recent-trading-data\SimpleAPICall\SimpleAPICall\obj\x64\Release\net8.0\RecentTr.4A907B2D.Up2Date
