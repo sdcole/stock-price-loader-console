@@ -49,7 +49,7 @@ public class AppDbContext : DbContext
 
         // Configure StockRecord entity
         modelBuilder.Entity<StockPrice>()
-            .ToTable("stock_price");
+            .ToTable("stock_prices");
 
         modelBuilder.Entity<StockPrice>()
             .Property(sr => sr.Id)

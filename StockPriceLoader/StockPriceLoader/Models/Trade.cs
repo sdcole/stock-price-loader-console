@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StockPriceLoader.Models
+﻿namespace StockPriceLoader.Models
 {
     /*
      *  Trade objects are the deserialized data from the api response
