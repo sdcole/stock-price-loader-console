@@ -43,8 +43,6 @@ namespace StockPriceLoader
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
                 .Enrich.WithProperty("app_name", APP_NAME)
-                .MinimumLevel.Debug()  // Set minimum log level to Debug
-                .WriteTo.File("log.txt")
                 .WriteTo.PostgreSQL(config.GetConnectionString("LoggingConnection"), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
 
@@ -56,7 +54,7 @@ namespace StockPriceLoader
                 while (true)
                 {
                     //Check if the market is open
-                    if (true)
+                    if (await MarketIsOpen())
                     {
                         //If market is open get current data and sleep for set increment currently set to 15 seconds.
                         LoadAndPopulateMarketData();
