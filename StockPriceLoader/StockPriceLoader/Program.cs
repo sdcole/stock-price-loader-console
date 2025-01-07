@@ -43,6 +43,8 @@ namespace StockPriceLoader
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
                 .Enrich.WithProperty("app_name", APP_NAME)
+                .MinimumLevel.Debug()  // Set minimum log level to Debug
+                .WriteTo.File("log.txt")
                 .WriteTo.PostgreSQL(config.GetConnectionString("LoggingConnection"), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
 
