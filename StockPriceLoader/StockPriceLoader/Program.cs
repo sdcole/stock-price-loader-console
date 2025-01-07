@@ -48,23 +48,29 @@ namespace StockPriceLoader
 
             Log.Information("App Started");
 
-
-            //Initial loop to keep app persistant
-            while (true)
+            try
             {
-                //Check if the market is open
-                if (await MarketIsOpen())
+                //Initial loop to keep app persistant
+                while (true)
                 {
-                    //If market is open get current data and sleep for set increment currently set to 15 seconds.
-                    LoadAndPopulateMarketData();
-                    Thread.Sleep(15000);
+                    //Check if the market is open
+                    if (await MarketIsOpen())
+                    {
+                        //If market is open get current data and sleep for set increment currently set to 15 seconds.
+                        LoadAndPopulateMarketData();
+                        Thread.Sleep(15000);
+                    }
+                    else
+                    {
+                        //If the market is not open sleep for 1 second and check again
+                        Thread.Sleep(1000);
+                    }
                 }
-                else
-                {
-                    //If the market is not open sleep for 1 second and check again
-                    Thread.Sleep(1000);
-                }
+            } catch (Exception ex)
+            {
+                Log.Fatal("An Unhandled Exception Occurred Stopping Application..", ex);
             }
+            
 
         }
 
