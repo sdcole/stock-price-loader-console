@@ -54,7 +54,7 @@ namespace StockPriceLoader
                 while (true)
                 {
                     //Check if the market is open
-                    if (await MarketIsOpen())
+                    if (true)
                     {
                         //If market is open get current data and sleep for set increment currently set to 15 seconds.
                         LoadAndPopulateMarketData();
