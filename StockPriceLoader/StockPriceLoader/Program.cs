@@ -42,6 +42,7 @@ namespace StockPriceLoader
 
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug() // Sets the minimum logging level to Debug
                 .Enrich.WithProperty("app_name", APP_NAME)
                 .WriteTo.PostgreSQL(config.GetConnectionString("LoggingConnection"), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
@@ -53,17 +54,18 @@ namespace StockPriceLoader
                 //Initial loop to keep app persistant
                 while (true)
                 {
+                    Log.Debug("In Loop");
                     //Check if the market is open
                     if (await MarketIsOpen())
                     {
                         //If market is open get current data and sleep for set increment currently set to 15 seconds.
                         LoadAndPopulateMarketData();
-                        Thread.Sleep(15000);
+                        await Task.Delay(15000);
                     }
                     else
                     {
                         //If the market is not open sleep for 1 second and check again
-                        Thread.Sleep(1000);
+                        await Task.Delay(1000);
                     }
                 }
             } catch (Exception ex)
@@ -87,7 +89,7 @@ namespace StockPriceLoader
             {
                 try
                 {
-
+                    Log.Debug("Checking if market is open...");
                     //Set the api headers for the market api
                     client.DefaultRequestHeaders.Add("Accept", "application/json");
                     client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
@@ -95,8 +97,9 @@ namespace StockPriceLoader
 
                     string marketStatus = @"https://api.alpaca.markets/v2/clock";
 
-
+                    
                     HttpResponseMessage response = await client.GetAsync(marketStatus);
+                    Log.Debug("Got a response");
                     string resp = await response.Content.ReadAsStringAsync();
                     // Ensure the request was successful
                     //Throw error if there was issues
@@ -109,6 +112,7 @@ namespace StockPriceLoader
 
 
                     StockMarketStatus status = JsonSerializer.Deserialize<StockMarketStatus>(content);
+                    Log.Debug("Current Market Status: " + status.IsOpen);
                     return status.IsOpen;
                 }
                 catch (Exception ex)
@@ -158,7 +162,7 @@ namespace StockPriceLoader
 
                         // Send GET request to the URL
                         //var response = await client.GetAsync(getLastPriceURL);
-
+                        Log.Debug("Getting Current Prices..");
                         HttpResponseMessage response = await client.GetAsync(getLastPriceURL);
                         string resp = await response.Content.ReadAsStringAsync();
                         // Ensure the request was successful
@@ -183,6 +187,7 @@ namespace StockPriceLoader
                                     context.StockPrice.Add(new StockPrice(trade.Key, trade.Value));
 
                                 }
+                                Log.Debug("Committing price add to table");
                                 context.SaveChanges();
                                 transaction.Commit();
 
