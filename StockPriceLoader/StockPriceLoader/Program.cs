@@ -42,7 +42,6 @@ namespace StockPriceLoader
 
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug() // Sets the minimum logging level to Debug
                 .Enrich.WithProperty("app_name", APP_NAME)
                 .WriteTo.PostgreSQL(config.GetConnectionString("LoggingConnection"), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
@@ -112,8 +111,8 @@ namespace StockPriceLoader
 
 
                     StockMarketStatus status = JsonSerializer.Deserialize<StockMarketStatus>(content);
-                    Log.Debug("Current Market Status: " + status.IsOpen);
-                    return status.IsOpen;
+                    Log.Debug("Current Market Status: " + status.is_open);
+                    return status.is_open;
                 }
                 catch (Exception ex)
                 {
