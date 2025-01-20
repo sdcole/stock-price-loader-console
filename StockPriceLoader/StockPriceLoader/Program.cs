@@ -50,21 +50,27 @@ namespace StockPriceLoader
 
             try
             {
+
                 //Initial loop to keep app persistant
                 while (true)
                 {
                     Log.Debug("In Loop");
                     //Check if the market is open
-                    if (await MarketIsOpen())
+                    StockMarketStatus marketStatus = await MarketIsOpen();
+
+                    if (marketStatus.is_open)
                     {
+
+                        LoadAndPopulateBarsData();
                         //If market is open get current data and sleep for set increment currently set to 15 seconds.
-                        LoadAndPopulateMarketData();
-                        await Task.Delay(15000);
+                        //LoadAndPopulateMarketData();
+                        await Task.Delay(60000);
                     }
                     else
                     {
-                        //If the market is not open sleep for 1 second and check again
-                        await Task.Delay(1000);
+                        Log.Information("Sleeping till market open: " + marketStatus.next_open);
+                        //If the market is not open sleep until it opens
+                        await Task.Delay((marketStatus.next_open - DateTime.UtcNow));
                     }
                 }
             } catch (Exception ex)
@@ -82,7 +88,7 @@ namespace StockPriceLoader
          * 
          * 
          */
-        public static async Task<bool> MarketIsOpen()
+        public static async Task<StockMarketStatus> MarketIsOpen()
         {
             using (HttpClient client = new HttpClient())
             {
@@ -112,13 +118,13 @@ namespace StockPriceLoader
 
                     StockMarketStatus status = JsonSerializer.Deserialize<StockMarketStatus>(content);
                     Log.Debug("Current Market Status: " + status.is_open);
-                    return status.is_open;
+                    return status;
                 }
                 catch (Exception ex)
                 {
                     Log.Error("Failed to get the current market status.", ex);
                 }
-                return false;
+                return null;
             }
         }
 
@@ -209,6 +215,103 @@ namespace StockPriceLoader
                 }
             }
         }
-        
+
+
+
+
+
+        /*
+                 *  LoadAndPopulateBarsData
+                 * 
+                 * This function gets a list of tickers from the DB. Then it appends it to the api call.
+                 * The api call will be parsed into records for the DB.
+                 * 
+                 */
+        public static async Task LoadAndPopulateBarsData()
+        {
+            using (AppDbContext context = new AppDbContext(config))
+            {
+                try
+                {
+                    Log.Debug("Getting Company List");
+                    List<Company> companies = context.Companies.ToList();
+                    string getLastPriceURL = @"https://data.alpaca.markets/v2/stocks/bars/latest?symbols=";
+
+
+                    //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
+                    foreach (Company company in companies)
+                    {
+                        getLastPriceURL += company.Ticker + ",";
+                    }
+
+                    getLastPriceURL = getLastPriceURL.Substring(0, getLastPriceURL.Length - 1);
+                    getLastPriceURL += @"&feed=iex&currency=USD";
+
+                    using (HttpClient client = new HttpClient())
+                    {
+                        try
+                        {
+
+
+                            client.DefaultRequestHeaders.Add("Accept", "application/json");
+                            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
+                            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", API_SECRET);
+
+
+                            // Send GET request to the URL
+                            //var response = await client.GetAsync(getLastPriceURL);
+                            Log.Debug("Getting Current Prices..");
+                            HttpResponseMessage response = await client.GetAsync(getLastPriceURL);
+                            string resp = await response.Content.ReadAsStringAsync();
+                            // Ensure the request was successful
+                            //response.EnsureSuccessStatusCode();
+
+                            // Read the response content as a string
+                            string content = await response.Content.ReadAsStringAsync();
+
+
+
+
+                            BarResponse bars = JsonSerializer.Deserialize<BarResponse>(content);
+
+
+                            using (IDbContextTransaction transaction = context.Database.BeginTransaction())
+                            {
+                                try
+                                {
+                                    // Output some of the data
+                                    foreach (var bar in bars.bars)
+                                    {
+                                        context.MinuteBars.Add(new BarData(bar.Key, bar.Value));
+
+                                    }
+                                    Log.Debug("Committing price add to table");
+                                    context.SaveChanges();
+                                    transaction.Commit();
+
+                                    Log.Information("Process loaded data successfully.");
+
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Error("Failed to insert records into table, Rolling back..", ex);
+                                    transaction.Rollback();
+                                }
+
+                            }
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error("An unhandled exception occurred", ex.ToString);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("An unhandled exception occurred", ex.ToString());
+                }
+            }
+        }
     }
 }

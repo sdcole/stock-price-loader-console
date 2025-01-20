@@ -13,15 +13,17 @@ public class AppDbContext : DbContext
 
     public DbSet<Company> Companies { get; set; }
     public DbSet<StockPrice> StockPrice { get; set; }
+    public DbSet<BarData> MinuteBars { get; set; }  // Add this DbSet for BarData
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var connectionString = _configuration.GetConnectionString("AppConnection");
-        optionsBuilder.UseNpgsql(connectionString);
+        optionsBuilder.UseNpgsql(connectionString);  // Use PostgreSQL, as indicated
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Configure the Company entity
         modelBuilder.Entity<Company>()
             .ToTable("companies");
 
@@ -47,7 +49,7 @@ public class AppDbContext : DbContext
             .IsRequired()
             .HasMaxLength(100);
 
-        // Configure StockRecord entity
+        // Configure StockPrice entity
         modelBuilder.Entity<StockPrice>()
             .ToTable("stock_prices");
 
@@ -96,5 +98,65 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<StockPrice>()
             .Property(sr => sr.UpdateStatus)
             .HasColumnName("update_status");
+
+        // Configure BarData entity
+        modelBuilder.Entity<BarData>()
+            .ToTable("minute_bars");  // Table name in the database
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Id)
+            .HasColumnName("id")
+            .IsRequired();  // Primary Key, auto-generated
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Symbol)
+            .HasColumnName("symbol")
+            .IsRequired()
+            .HasMaxLength(10);  // Max length for stock symbols like "AAPL", "MSFT"
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Timestamp)
+            .HasColumnName("timestamp")
+            .IsRequired();  // Timestamp in RFC-3339 format
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Open)
+            .HasColumnName("open")
+            .IsRequired();  // Opening price
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.High)
+            .HasColumnName("high")
+            .IsRequired();  // Highest price
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Low)
+            .HasColumnName("low")
+            .IsRequired();  // Lowest price
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Close)
+            .HasColumnName("close")
+            .IsRequired();  // Closing price
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.Volume)
+            .HasColumnName("volume")
+            .IsRequired();  // Trade volume
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.TradeCount)
+            .HasColumnName("trade_count")
+            .IsRequired();  // Number of trades
+
+        modelBuilder.Entity<BarData>()
+            .Property(b => b.VW)
+            .HasColumnName("vw")
+            .IsRequired();  // Volume Weighted Average Price
+
+        // Define unique constraint for Symbol and Timestamp
+        modelBuilder.Entity<BarData>()
+            .HasIndex(b => new { b.Symbol, b.Timestamp })
+            .IsUnique();
     }
 }
