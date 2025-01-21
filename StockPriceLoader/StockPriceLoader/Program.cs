@@ -68,6 +68,8 @@ namespace StockPriceLoader
                     }
                     else
                     {
+                        //Load the bar info for the entire day
+                        LoadAndPopulateDailyBarsData();
                         Log.Information("Sleeping till market open: " + marketStatus.next_open);
                         //If the market is not open sleep until it opens
                         await Task.Delay((marketStatus.next_open - DateTime.UtcNow));
@@ -313,5 +315,104 @@ namespace StockPriceLoader
                 }
             }
         }
+
+
+
+
+        /**
+         *  LoadAndPopulateDailyBarsData
+         *  
+         *  This will average a day's worth of data and load it into the db.
+         * 
+         * 
+         * 
+         **/
+        public static async Task LoadAndPopulateDailyBarsData()
+        {
+            using (AppDbContext context = new AppDbContext(config))
+            {
+                try
+                {
+                    List<Company> companies = context.Companies.ToList();
+                    string getLastPriceURL = @"https://data.alpaca.markets/v2/stocks/bars?symbols=";
+
+
+                    //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
+                    foreach (Company company in companies)
+                    {
+                        getLastPriceURL += company.Ticker + ",";
+                    }
+
+                    getLastPriceURL = getLastPriceURL.Substring(0, getLastPriceURL.Length - 1);
+                    getLastPriceURL += @"&timeframe=1D&start=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&limit=1000&adjustment=raw&feed=iex&currency=USD&sort=asc";
+
+                    using (HttpClient client = new HttpClient())
+                    {
+                        try
+                        {
+
+
+                            client.DefaultRequestHeaders.Add("Accept", "application/json");
+                            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
+                            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", API_SECRET);
+
+
+                            // Send GET request to the URL
+                            //var response = await client.GetAsync(getLastPriceURL);
+
+                            HttpResponseMessage response = await client.GetAsync(getLastPriceURL);
+                            string resp = await response.Content.ReadAsStringAsync();
+                            // Ensure the request was successful
+                            //response.EnsureSuccessStatusCode();
+
+                            // Read the response content as a string
+                            string content = await response.Content.ReadAsStringAsync();
+
+
+
+
+                            HistoricalBarResponse bars = JsonSerializer.Deserialize<HistoricalBarResponse>(content);
+
+
+                            using (IDbContextTransaction transaction = context.Database.BeginTransaction())
+                            {
+                                try
+                                {
+                                    // Output some of the data
+                                    foreach (var bar in bars.bars)
+                                    {
+                                        context.DailyBars.Add(new BarData(bar.Key, bar.Value[0]));
+
+                                    }
+
+                                    context.SaveChanges();
+                                    transaction.Commit();
+
+
+
+                                }
+                                catch (Exception ex)
+                                {
+
+                                    transaction.Rollback();
+                                }
+                            }
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+        }
+
+
+
     }
 }
