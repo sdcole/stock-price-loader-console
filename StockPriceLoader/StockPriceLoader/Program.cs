@@ -72,12 +72,15 @@ namespace StockPriceLoader
                         LoadAndPopulateDailyBarsData();
                         Log.Information("Sleeping till market open: " + marketStatus.next_open);
                         //If the market is not open sleep until it opens
-                        await Task.Delay((marketStatus.next_open - DateTime.UtcNow));
+                        //This is done in utc so that it matches server time.
+                        DateTime nextOpenTimeUtc = marketStatus.next_open.ToUniversalTime();
+
+                        await Task.Delay((nextOpenTimeUtc - DateTime.UtcNow));
                     }
                 }
             } catch (Exception ex)
             {
-                Log.Fatal("An Unhandled Exception Occurred Stopping Application..", ex);
+                Log.Fatal(ex, "An Unhandled Exception Occurred Stopping Application..");
             }
             
 
@@ -344,7 +347,7 @@ namespace StockPriceLoader
                     }
 
                     getLastPriceURL = getLastPriceURL.Substring(0, getLastPriceURL.Length - 1);
-                    getLastPriceURL += @"&timeframe=1D&start=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&limit=1000&adjustment=raw&feed=iex&currency=USD&sort=asc";
+                    getLastPriceURL += @"&timeframe=1D&start=" + DateTime.UtcNow.Date.AddDays(-1).ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.AddDays(-1).ToString("yyyy-MM-dd") + "&limit=1000&adjustment=raw&feed=iex&currency=USD&sort=asc";
 
                     using (HttpClient client = new HttpClient())
                     {
@@ -393,7 +396,7 @@ namespace StockPriceLoader
                                 }
                                 catch (Exception ex)
                                 {
-
+                                    Log.Error(ex, "There was an issue saving to database");
                                     transaction.Rollback();
                                 }
                             }
@@ -401,13 +404,13 @@ namespace StockPriceLoader
                         }
                         catch (Exception ex)
                         {
-
+                            Log.Error(ex, "There was an issue calling the Alpaca Market API");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-
+                    Log.Error(ex, "There was an issue getting Company list from database");
                 }
             }
         }
