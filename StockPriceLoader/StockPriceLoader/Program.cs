@@ -194,7 +194,7 @@ namespace StockPriceLoader
                                 // Output some of the data
                                 foreach (var trade in trades.trades)
                                 {
-                                    context.StockPrice.Add(new StockPrice(trade.Key, trade.Value));
+                                    context.StockPrices.Add(new StockPrice(trade.Key, trade.Value));
 
                                 }
                                 Log.Debug("Committing price add to table");
@@ -287,7 +287,7 @@ namespace StockPriceLoader
                                     // Output some of the data
                                     foreach (var bar in bars.bars)
                                     {
-                                        context.MinuteBars.Add(new BarData(bar.Key, bar.Value));
+                                        context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
 
                                     }
                                     Log.Debug("Committing price add to table");
@@ -384,7 +384,7 @@ namespace StockPriceLoader
                                     // Output some of the data
                                     foreach (var bar in bars.bars)
                                     {
-                                        context.DailyBars.Add(new BarData(bar.Key, bar.Value[0]));
+                                        context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
 
                                     }
 
