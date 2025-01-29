@@ -69,7 +69,7 @@ namespace StockPriceLoader
                     else
                     {
                         //Load the bar info for the entire day
-                        LoadAndPopulateDailyBarsData();
+                        await LoadAndPopulateDailyBarsData();
                         Log.Information("Sleeping till market open: " + marketStatus.next_open);
                         //If the market is not open sleep until it opens
                         //This is done in utc so that it matches server time.
@@ -82,7 +82,8 @@ namespace StockPriceLoader
             {
                 Log.Fatal(ex, "An Unhandled Exception Occurred Stopping Application..");
             }
-            
+            //Close out logging allow any current data to update
+            Log.CloseAndFlush();
 
         }
 
