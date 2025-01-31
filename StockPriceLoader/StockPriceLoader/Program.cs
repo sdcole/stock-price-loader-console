@@ -74,16 +74,8 @@ namespace StockPriceLoader
                         //If the market is not open sleep until it opens
                         //This is done in utc so that it matches server time.
                         DateTime nextOpenTimeUtc = marketStatus.next_open.ToUniversalTime();
-                        TimeSpan delay = nextOpenTimeUtc - DateTime.UtcNow;
-                        if (delay.TotalMilliseconds > 0)
-                        {
-                            await Task.Delay(delay);
-                        }
-                        else
-                        {
-                            //just loop again because the market is now open
-                        }
-                        
+
+                        await Task.Delay((nextOpenTimeUtc - DateTime.UtcNow));
                     }
                 }
             } catch (Exception ex)
@@ -356,7 +348,7 @@ namespace StockPriceLoader
                     }
 
                     getLastPriceURL = getLastPriceURL.Substring(0, getLastPriceURL.Length - 1);
-                    getLastPriceURL += @"&timeframe=1D&start=" + DateTime.UtcNow.Date.AddDays(-1).ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.AddDays(-1).ToString("yyyy-MM-dd") + "&limit=1000&adjustment=raw&feed=iex&currency=USD&sort=asc";
+                    getLastPriceURL += @"&timeframe=1D&start=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&limit=1000&adjustment=raw&feed=iex&currency=USD&sort=asc";
 
                     using (HttpClient client = new HttpClient())
                     {
