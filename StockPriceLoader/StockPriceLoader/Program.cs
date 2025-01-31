@@ -75,7 +75,15 @@ namespace StockPriceLoader
                         //This is done in utc so that it matches server time.
                         DateTime nextOpenTimeUtc = marketStatus.next_open.ToUniversalTime();
 
-                        await Task.Delay((nextOpenTimeUtc - DateTime.UtcNow));
+                        TimeSpan delay = nextOpenTimeUtc - DateTime.UtcNow;
+                        if (delay.TotalMilliseconds > 0)
+                        {
+                            await Task.Delay(delay);
+                        }
+                        else
+                        {
+                            //just loop again because the market is now open
+                        }
                     }
                 }
             } catch (Exception ex)
