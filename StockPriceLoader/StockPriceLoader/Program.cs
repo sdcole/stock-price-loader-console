@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Storage;
 using Serilog;
 using Serilog.Sinks.PostgreSQL;
+using StockPriceLoader.Helpers;
 
 
 namespace StockPriceLoader
@@ -13,7 +14,7 @@ namespace StockPriceLoader
     {
 
         private static IConfigurationBuilder builder = new ConfigurationBuilder()
-                .AddJsonFile("config.json", optional: false);
+                .AddJsonFile("config.json", optional: false, reloadOnChange: true);
 
         private static IConfigurationRoot config = builder.Build();
         //Alpaca API Keys
@@ -29,6 +30,54 @@ namespace StockPriceLoader
         public static async Task Main(string[] args)
         {
 
+            
+
+
+            try
+            {
+                // Check if the connection string is already encrypted (simple Base64 check)
+                if (!EncryptionHelper.IsEncrypted(config.GetConnectionString("LoggingConnection")))
+                {
+                    
+                    string encryptedConnectionString = EncryptionHelper.Encrypt(config.GetConnectionString("LoggingConnection"));
+
+                    // Update config.json with the encrypted string
+                    EncryptionHelper.UpdateConfigFile(encryptedConnectionString, "ConnectionStrings:LoggingConnection");
+                }
+
+                // Check if the connection string is already encrypted (simple Base64 check)
+                if (!EncryptionHelper.IsEncrypted(config.GetConnectionString("AppConnection")))
+                {
+                    
+                    string encryptedConnectionString = EncryptionHelper.Encrypt(config.GetConnectionString("AppConnection"));
+
+                    // Update config.json with the encrypted string
+                    EncryptionHelper.UpdateConfigFile(encryptedConnectionString, "ConnectionStrings:AppConnection");
+                }
+                // Check if the connection string is already encrypted (simple Base64 check)
+                if (!EncryptionHelper.IsEncrypted(config["API_KEY"]))
+                {
+
+                    string encryptedConnectionString = EncryptionHelper.Encrypt(config["API_KEY"]);
+
+                    // Update config.json with the encrypted string
+                    EncryptionHelper.UpdateConfigFile(encryptedConnectionString, "API_KEY");
+                }
+                // Check if the connection string is already encrypted (simple Base64 check)
+                if (!EncryptionHelper.IsEncrypted(config["API_SECRET"]))
+                {
+
+                    string encryptedConnectionString = EncryptionHelper.Encrypt(config["API_SECRET"]);
+
+                    // Update config.json with the encrypted string
+                    EncryptionHelper.UpdateConfigFile(encryptedConnectionString, "API_SECRET");
+                }
+            }
+            catch (Exception ex)
+            {
+                
+            }
+
             //Logging for DB setup
             var columnOptions = new Dictionary<string, ColumnWriterBase>
             {
@@ -43,11 +92,10 @@ namespace StockPriceLoader
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
                 .Enrich.WithProperty("app_name", APP_NAME)
-                .WriteTo.PostgreSQL(config.GetConnectionString("LoggingConnection"), "logs", columnOptions, needAutoCreateTable: true)
+                .WriteTo.PostgreSQL(EncryptionHelper.Decrypt(config.GetConnectionString("LoggingConnection")), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
 
             Log.Information("App Started");
-
             try
             {
 

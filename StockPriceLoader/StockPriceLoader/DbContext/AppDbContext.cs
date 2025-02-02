@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using StockPriceLoader.Helpers;
 using StockPriceLoader.Models;
 
 public class AppDbContext : DbContext
@@ -18,7 +19,7 @@ public class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        var connectionString = _configuration.GetConnectionString("AppConnection");
+        var connectionString = EncryptionHelper.Decrypt(_configuration.GetConnectionString("AppConnection"));
         optionsBuilder.UseNpgsql(connectionString);
     }
 
