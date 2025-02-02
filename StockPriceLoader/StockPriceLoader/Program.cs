@@ -17,12 +17,6 @@ namespace StockPriceLoader
                 .AddJsonFile("config.json", optional: false, reloadOnChange: true);
 
         private static IConfigurationRoot config = builder.Build();
-        //Alpaca API Keys
-        [Required]
-        private static readonly string API_KEY = config["API_KEY"];
-
-        [Required]
-        private static readonly string API_SECRET = config["API_SECRET"];
 
         [Required]
         private static readonly string APP_NAME = config["APP_NAME"];
@@ -161,8 +155,8 @@ namespace StockPriceLoader
                     Log.Debug("Checking if market is open...");
                     //Set the api headers for the market api
                     client.DefaultRequestHeaders.Add("Accept", "application/json");
-                    client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
-                    client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", API_SECRET);
+                    client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", EncryptionHelper.Decrypt(config["API_KEY"]));
+                    client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", EncryptionHelper.Decrypt(config["API_SECRET"]));
 
                     string marketStatus = @"https://api.alpaca.markets/v2/clock";
 
@@ -225,8 +219,8 @@ namespace StockPriceLoader
 
 
                         client.DefaultRequestHeaders.Add("Accept", "application/json");
-                        client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
-                        client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", API_SECRET);
+                        client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", EncryptionHelper.Decrypt(config["API_KEY"]));
+                        client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", EncryptionHelper.Decrypt(config["API_SECRET"]));
 
 
                         // Send GET request to the URL
@@ -318,8 +312,8 @@ namespace StockPriceLoader
 
 
                             client.DefaultRequestHeaders.Add("Accept", "application/json");
-                            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
-                            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", API_SECRET);
+                            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", EncryptionHelper.Decrypt(config["API_KEY"]));
+                            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", EncryptionHelper.Decrypt(config["API_SECRET"]));
 
 
                             // Send GET request to the URL
@@ -415,8 +409,8 @@ namespace StockPriceLoader
 
 
                             client.DefaultRequestHeaders.Add("Accept", "application/json");
-                            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", API_KEY);
-                            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", API_SECRET);
+                            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", EncryptionHelper.Decrypt(config["API_KEY"]));
+                            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", EncryptionHelper.Decrypt(config["API_SECRET"]));
 
 
                             // Send GET request to the URL
