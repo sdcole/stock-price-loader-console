@@ -72,6 +72,8 @@ namespace StockPriceLoader
                     // Update config.json with the encrypted string
                     EncryptionHelper.UpdateConfigFile(encryptedConnectionString, "API_SECRET");
                 }
+
+                config.Reload();
             }
             catch (Exception ex)
             {
