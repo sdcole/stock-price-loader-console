@@ -82,7 +82,7 @@ namespace StockPriceLoader.Helpers
 
         public static void UpdateConfigFile(string encryptedConnectionString, string connStringName)
         {
-            string configFilePath = "config.json";
+            string configFilePath = AppContext.BaseDirectory + "config.json";
 
             // Read existing JSON content
             string jsonContent = File.ReadAllText(configFilePath);
