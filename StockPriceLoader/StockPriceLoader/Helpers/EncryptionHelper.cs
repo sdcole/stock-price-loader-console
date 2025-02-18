@@ -82,7 +82,7 @@ namespace StockPriceLoader.Helpers
 
         public static void UpdateConfigFile(string encryptedConnectionString, string connStringName)
         {
-            string configFilePath = AppContext.BaseDirectory + "config.json";
+            string configFilePath = AppContext.BaseDirectory + "appsettings.json";
 
             // Read existing JSON content
             string jsonContent = File.ReadAllText(configFilePath);
@@ -113,5 +113,6 @@ namespace StockPriceLoader.Helpers
             string updatedJson = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(configFilePath, updatedJson);
         }
+
     }
 }
