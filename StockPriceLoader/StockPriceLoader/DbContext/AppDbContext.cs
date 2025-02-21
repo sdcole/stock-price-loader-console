@@ -2,14 +2,14 @@
 using Microsoft.Extensions.Configuration;
 using StockPriceLoader.Helpers;
 using StockPriceLoader.Models;
+using StockPriceLoader.Services;
 
 public class AppDbContext : DbContext
 {
-    private readonly IConfiguration _configuration;
 
-    public AppDbContext(IConfiguration configuration)
+    public AppDbContext()
     {
-        _configuration = configuration;
+        
     }
 
     public DbSet<Company> Companies { get; set; }
@@ -19,7 +19,7 @@ public class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        var connectionString = EncryptionHelper.Decrypt(_configuration.GetConnectionString("AppConnection"));
+        var connectionString = EncryptionHelper.Decrypt(ConfigurationService.Configuration["ConnectionStrings:AppConnection"]);
         optionsBuilder.UseNpgsql(connectionString);
     }
 

@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json;
 using System.Threading.Tasks;
+using StockPriceLoader.Services;
 
 namespace StockPriceLoader.Helpers
 {
@@ -114,5 +115,22 @@ namespace StockPriceLoader.Helpers
             File.WriteAllText(configFilePath, updatedJson);
         }
 
+
+        /***
+         * This function encrypts the app config files upon startup.
+         * 
+         **/
+        public static void EncryptSensitiveConfigData(string[] keysToEncrypt)
+        {
+            foreach (var key in keysToEncrypt)
+            {
+                string value = ConfigurationService.Configuration[key];
+                if (!EncryptionHelper.IsEncrypted(value))
+                {
+                    EncryptionHelper.UpdateConfigFile(EncryptionHelper.Encrypt(value), key);
+                }
+            }
+            ConfigurationService.Configuration.Reload();
+        }
     }
 }

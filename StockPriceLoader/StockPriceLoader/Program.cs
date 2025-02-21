@@ -6,28 +6,19 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Serilog;
 using Serilog.Sinks.PostgreSQL;
 using StockPriceLoader.Helpers;
-
+using StockPriceLoader.Services;
 
 namespace StockPriceLoader
 {
-    internal static class StockPriceLoader
+    public static class StockPriceLoader
     {
-
-        //Config file that will store encrypted api info and app info.
-        private static IConfigurationBuilder builder = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-        private static IConfigurationRoot config = builder.Build();
-
-        [Required]
-        private static readonly string APP_NAME = config["APP_NAME"];
-
 
         public static async Task Main(string[] args)
         {
+            ConfigurationService.Initialize();
             //First we encrypt the contents of the app config file.
             //No need to try because if this fails the app cannot continue.
-            EncryptSensitiveConfigData();
+            EncryptionHelper.EncryptSensitiveConfigData(new[] { "ConnectionStrings:LoggingConnection", "ConnectionStrings:AppConnection", "API_KEY", "API_SECRET" });
 
             //Logging for DB setup
             var columnOptions = new Dictionary<string, ColumnWriterBase>
@@ -42,8 +33,8 @@ namespace StockPriceLoader
 
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
-                .Enrich.WithProperty("app_name", APP_NAME)
-                .WriteTo.PostgreSQL(EncryptionHelper.Decrypt(config.GetConnectionString("LoggingConnection")), "logs", columnOptions, needAutoCreateTable: true)
+                .Enrich.WithProperty("app_name", ConfigurationService.Configuration["APP_NAME"])
+                .WriteTo.PostgreSQL(EncryptionHelper.Decrypt(ConfigurationService.Configuration["ConnectionStrings:LoggingConnection"]), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
 
             Log.Information("App Started");
@@ -55,7 +46,7 @@ namespace StockPriceLoader
                 {
                     Log.Debug("In Loop");
                     //Check if the market is open
-                    StockMarketStatus marketStatus = await MarketIsOpen();
+                    StockMarketStatus marketStatus = await MarketHelper.MarketIsOpen();
 
                     if (marketStatus.is_open)
                     {
@@ -93,49 +84,7 @@ namespace StockPriceLoader
         }
 
 
-        /*
-         * MarketIsOpen
-         * returns boolean whether the stock market is open.
-         * 
-         * 
-         */
-        public static async Task<StockMarketStatus> MarketIsOpen()
-        {
-            using (HttpClient client = new HttpClient())
-            {
-                try
-                {
-                    Log.Debug("Checking if market is open...");
-                    //Set the api headers for the market api
-                    ConfigureHTTPClient(client);
 
-                    string marketStatus = @"https://api.alpaca.markets/v2/clock";
-
-                    
-                    HttpResponseMessage response = await client.GetAsync(marketStatus);
-                    Log.Debug("Got a response");
-                    string resp = await response.Content.ReadAsStringAsync();
-                    // Ensure the request was successful
-                    //Throw error if there was issues
-                    response.EnsureSuccessStatusCode();
-
-                    // Read the response content as a string
-                    string content = await response.Content.ReadAsStringAsync();
-
-
-
-
-                    StockMarketStatus status = JsonSerializer.Deserialize<StockMarketStatus>(content);
-                    Log.Debug("Current Market Status: " + status.is_open);
-                    return status;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to get the current market status.", ex);
-                }
-                return null;
-            }
-        }
 
 
         /*
@@ -147,7 +96,7 @@ namespace StockPriceLoader
                  */
         public static async Task LoadAndPopulateBarsData()
         {
-            using (AppDbContext context = new AppDbContext(config))
+            using (AppDbContext context = new AppDbContext())
             {
                 try
                 {
@@ -171,7 +120,7 @@ namespace StockPriceLoader
                         {
 
 
-                            ConfigureHTTPClient(client);
+                            APIHelper.ConfigureHTTPClient(client);
 
 
                             // Send GET request to the URL
@@ -243,7 +192,7 @@ namespace StockPriceLoader
          **/
         public static async Task LoadAndPopulateDailyBarsData()
         {
-            using (AppDbContext context = new AppDbContext(config))
+            using (AppDbContext context = new AppDbContext())
             {
                 try
                 {
@@ -266,7 +215,7 @@ namespace StockPriceLoader
                         {
 
 
-                            ConfigureHTTPClient(client);
+                            APIHelper.ConfigureHTTPClient(client);
 
 
                             // Send GET request to the URL
@@ -324,33 +273,8 @@ namespace StockPriceLoader
             }
         }
 
-        /***
-         * This function encrypts the app config files upon startup.
-         * 
-         **/
-        private static void EncryptSensitiveConfigData()
-        {
-            var keysToEncrypt = new[] { "ConnectionStrings:LoggingConnection", "ConnectionStrings:AppConnection", "API_KEY", "API_SECRET" };
-            foreach (var key in keysToEncrypt)
-            {
-                string value = config[key];
-                if (!EncryptionHelper.IsEncrypted(value))
-                {
-                    EncryptionHelper.UpdateConfigFile(EncryptionHelper.Encrypt(value), key);
-                }
-            }
-            config.Reload();
-        }
+        
 
-        /**
-         * This function adds the required request headers to the HTTP Client to allow for api calls.
-         * 
-         */
-        private static void ConfigureHTTPClient(HttpClient client)
-        {
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-            client.DefaultRequestHeaders.Add("APCA-API-KEY-ID", EncryptionHelper.Decrypt(config["API_KEY"]));
-            client.DefaultRequestHeaders.Add("APCA-API-SECRET-KEY", EncryptionHelper.Decrypt(config["API_SECRET"]));
-        }
+        
     }
 }

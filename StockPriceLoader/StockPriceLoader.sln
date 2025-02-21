@@ -5,6 +5,8 @@ VisualStudioVersion = 17.7.34221.43
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StockPriceLoader", "StockPriceLoader\StockPriceLoader.csproj", "{725D0179-1168-462A-BCAF-CAB7E9EA7EC9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StockPriceLoaderTests", "StockPriceLoaderTests\StockPriceLoaderTests.csproj", "{89401582-3F35-49BD-A0E2-DAB1B5120007}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,14 @@ Global
 		{725D0179-1168-462A-BCAF-CAB7E9EA7EC9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{725D0179-1168-462A-BCAF-CAB7E9EA7EC9}.Release|x64.ActiveCfg = Release|x64
 		{725D0179-1168-462A-BCAF-CAB7E9EA7EC9}.Release|x64.Build.0 = Release|x64
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Debug|x64.Build.0 = Debug|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Release|x64.ActiveCfg = Release|Any CPU
+		{89401582-3F35-49BD-A0E2-DAB1B5120007}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
