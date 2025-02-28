@@ -37,10 +37,9 @@ namespace StockPriceLoader
                 .WriteTo.PostgreSQL(EncryptionHelper.Decrypt(ConfigurationService.Configuration["ConnectionStrings:LoggingConnection"]), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
 
-            Log.Information("App Started");
+            //Log.Information("App Started");
             try
             {
-
                 //Initial loop to keep app persistant
                 while (true)
                 {
@@ -74,7 +73,8 @@ namespace StockPriceLoader
                         }
                     }
                 }
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 Log.Fatal(ex, "An Unhandled Exception Occurred Stopping Application..");
             }
@@ -105,22 +105,22 @@ namespace StockPriceLoader
                     //The character count of this + the other necessary gets is 80
                     // max get req length is 2048 so 2048 - 
                     string apiGetReq = getLastPriceURL;
-                    
+
                     foreach (Company company in companies)
                     {
 
                         //This makes sure we dont go over the 2048 character limit.
-                        if (apiGetReq.Length >= 1963)
+                        if (apiGetReq.Length >= 2043)
                         {
                             apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
-                            CallApiAndLoadData(apiGetReq);
+                            CallApiAndLoadMinuteData(apiGetReq);
                             apiGetReq = getLastPriceURL;
                         }
                         else
                         {
                             apiGetReq += company.Ticker + ",";
                         }
-                        
+
                     }
                 }
                 catch (Exception ex)
@@ -131,7 +131,7 @@ namespace StockPriceLoader
         }
 
 
-        public static async Task CallApiAndLoadData(string apiGetReq)
+        public static async Task CallApiAndLoadMinuteData(string apiGetReq)
         {
             using (AppDbContext context = new AppDbContext())
             {
@@ -209,74 +209,30 @@ namespace StockPriceLoader
                 try
                 {
                     List<Company> companies = context.Companies.ToList();
-                    string getLastPriceURL = @"https://data.alpaca.markets/v2/stocks/bars?symbols=";
-
-
+                    string getLastPriceURL = @"https://data.alpaca.markets/v2/stocks/bars?timeframe=1D&start=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&limit=5000&adjustment=raw&feed=iex&currency=USD&sort=asc&symbols=";
+                    //235 chars
+                    string apiGetReq = getLastPriceURL;
                     //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
                     foreach (Company company in companies)
                     {
-                        getLastPriceURL += company.Ticker + ",";
-                    }
+                        
 
-                    getLastPriceURL = getLastPriceURL.Substring(0, getLastPriceURL.Length - 1);
-                    getLastPriceURL += @"&timeframe=1D&start=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&end=" + DateTime.UtcNow.Date.ToString("yyyy-MM-dd") + "&limit=1000&adjustment=raw&feed=iex&currency=USD&sort=asc";
-
-                    using (HttpClient client = new HttpClient())
-                    {
-                        try
+                        //This makes sure we dont go over the 2048 character limit.
+                        if (apiGetReq.Length >= 2043)
                         {
-
-
-                            APIHelper.ConfigureHTTPClient(client);
-
-
-                            // Send GET request to the URL
-                            //var response = await client.GetAsync(getLastPriceURL);
-
-                            HttpResponseMessage response = await client.GetAsync(getLastPriceURL);
-                            string resp = await response.Content.ReadAsStringAsync();
-                            // Ensure the request was successful
-                            //response.EnsureSuccessStatusCode();
-
-                            // Read the response content as a string
-                            string content = await response.Content.ReadAsStringAsync();
-
-
-
-
-                            HistoricalBarResponse bars = JsonSerializer.Deserialize<HistoricalBarResponse>(content);
-
-
-                            using (IDbContextTransaction transaction = context.Database.BeginTransaction())
-                            {
-                                try
-                                {
-                                    // Output some of the data
-                                    foreach (var bar in bars.bars)
-                                    {
-                                        context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
-
-                                    }
-
-                                    context.SaveChanges();
-                                    transaction.Commit();
-
-
-
-                                }
-                                catch (Exception ex)
-                                {
-                                    Log.Error(ex, "There was an issue saving to database");
-                                    transaction.Rollback();
-                                }
-                            }
-
+                            apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
+                            await CallApiAndLoadDailyData(apiGetReq);
+                            apiGetReq = getLastPriceURL;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Log.Error(ex, "There was an issue calling the Alpaca Market API");
+                            apiGetReq += company.Ticker + ",";
                         }
                     }
+
+
+
+                    
                 }
                 catch (Exception ex)
                 {
@@ -285,8 +241,70 @@ namespace StockPriceLoader
             }
         }
 
-        
+        public static async Task CallApiAndLoadDailyData(string apiGetReq)
+        {
+            using (AppDbContext context = new AppDbContext())
+            {
 
-        
+                using (HttpClient client = new HttpClient())
+                {
+                    try
+                    {
+
+
+                        APIHelper.ConfigureHTTPClient(client);
+
+
+                        // Send GET request to the URL
+                        //var response = await client.GetAsync(getLastPriceURL);
+
+                        HttpResponseMessage response = await client.GetAsync(apiGetReq);
+                        string resp = await response.Content.ReadAsStringAsync();
+                        // Ensure the request was successful
+                        //response.EnsureSuccessStatusCode();
+
+                        // Read the response content as a string
+                        string content = await response.Content.ReadAsStringAsync();
+
+
+
+
+                        HistoricalBarResponse bars = JsonSerializer.Deserialize<HistoricalBarResponse>(content);
+
+
+                        using (IDbContextTransaction transaction = context.Database.BeginTransaction())
+                        {
+                            try
+                            {
+                                // Output some of the data
+                                foreach (var bar in bars.bars)
+                                {
+                                    context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
+
+                                }
+
+                                context.SaveChanges();
+                                transaction.Commit();
+
+
+
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, "There was an issue saving to database");
+                                transaction.Rollback();
+                            }
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "There was an issue calling the Alpaca Market API");
+                    }
+                }
+
+            }
+        }
     }
+
 }
