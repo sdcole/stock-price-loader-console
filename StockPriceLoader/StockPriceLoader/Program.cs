@@ -90,8 +90,7 @@ namespace StockPriceLoader
         /*
                  *  LoadAndPopulateBarsData
                  * 
-                 * This function gets a list of tickers from the DB. Then it appends it to the api call.
-                 * The api call will be parsed into records for the DB.
+                 * This function gets a list of tickers from the DB. Then it kicks off async api calls so that it can handle large lists.
                  * 
                  */
         public static async Task LoadAndPopulateBarsData()
@@ -102,74 +101,26 @@ namespace StockPriceLoader
                 {
                     Log.Debug("Getting Company List");
                     List<Company> companies = context.Companies.ToList();
-                    string getLastPriceURL = @"https://data.alpaca.markets/v2/stocks/bars/latest?symbols=";
-
-
-                    //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
+                    string getLastPriceURL = @"https://data.alpaca.markets/v2/stocks/bars/latest?feed=iex&currency=USD&symbols=";
+                    //The character count of this + the other necessary gets is 80
+                    // max get req length is 2048 so 2048 - 
+                    string apiGetReq = getLastPriceURL;
+                    
                     foreach (Company company in companies)
                     {
-                        getLastPriceURL += company.Ticker + ",";
-                    }
 
-                    getLastPriceURL = getLastPriceURL.Substring(0, getLastPriceURL.Length - 1);
-                    getLastPriceURL += @"&feed=iex&currency=USD";
-
-                    using (HttpClient client = new HttpClient())
-                    {
-                        try
+                        //This makes sure we dont go over the 2048 character limit.
+                        if (apiGetReq.Length >= 1963)
                         {
-
-
-                            APIHelper.ConfigureHTTPClient(client);
-
-
-                            // Send GET request to the URL
-                            //var response = await client.GetAsync(getLastPriceURL);
-                            Log.Debug("Getting Current Prices..");
-                            HttpResponseMessage response = await client.GetAsync(getLastPriceURL);
-                            string resp = await response.Content.ReadAsStringAsync();
-                            // Ensure the request was successful
-                            //response.EnsureSuccessStatusCode();
-
-                            // Read the response content as a string
-                            string content = await response.Content.ReadAsStringAsync();
-
-
-
-
-                            BarResponse bars = JsonSerializer.Deserialize<BarResponse>(content);
-
-
-                            using (IDbContextTransaction transaction = context.Database.BeginTransaction())
-                            {
-                                try
-                                {
-                                    // Output some of the data
-                                    foreach (var bar in bars.bars)
-                                    {
-                                        context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
-
-                                    }
-                                    Log.Debug("Committing price add to table");
-                                    context.SaveChanges();
-                                    transaction.Commit();
-
-                                    Log.Information("Process loaded data successfully.");
-
-                                }
-                                catch (Exception ex)
-                                {
-                                    Log.Error("Failed to insert records into table, Rolling back..", ex);
-                                    transaction.Rollback();
-                                }
-
-                            }
-
+                            apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
+                            CallApiAndLoadData(apiGetReq);
+                            apiGetReq = getLastPriceURL;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Log.Error("An unhandled exception occurred", ex.ToString);
+                            apiGetReq += company.Ticker + ",";
                         }
+                        
                     }
                 }
                 catch (Exception ex)
@@ -180,7 +131,68 @@ namespace StockPriceLoader
         }
 
 
+        public static async Task CallApiAndLoadData(string apiGetReq)
+        {
+            using (AppDbContext context = new AppDbContext())
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    try
+                    {
 
+
+                        APIHelper.ConfigureHTTPClient(client);
+
+
+                        // Send GET request to the URL
+                        Log.Debug("Getting Current Prices..");
+                        HttpResponseMessage response = await client.GetAsync(apiGetReq);
+                        string resp = await response.Content.ReadAsStringAsync();
+                        // Ensure the request was successful
+                        //response.EnsureSuccessStatusCode();
+
+                        // Read the response content as a string
+                        string content = await response.Content.ReadAsStringAsync();
+
+
+
+
+                        BarResponse bars = JsonSerializer.Deserialize<BarResponse>(content);
+
+
+                        using (IDbContextTransaction transaction = context.Database.BeginTransaction())
+                        {
+                            try
+                            {
+                                // Output some of the data
+                                foreach (var bar in bars.bars)
+                                {
+                                    context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
+
+                                }
+                                Log.Debug("Committing price add to table");
+                                context.SaveChanges();
+                                transaction.Commit();
+
+                                Log.Information("Process loaded data successfully.");
+
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error("Failed to insert records into table, Rolling back..", ex);
+                                transaction.Rollback();
+                            }
+
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("An unhandled exception occurred", ex.ToString);
+                    }
+                }
+            }
+        }
 
         /**
          *  LoadAndPopulateDailyBarsData
