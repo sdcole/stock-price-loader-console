@@ -122,6 +122,8 @@ namespace StockPriceLoader
                         }
 
                     }
+                    apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
+                    CallApiAndLoadMinuteData(apiGetReq);
                 }
                 catch (Exception ex)
                 {
@@ -221,7 +223,7 @@ namespace StockPriceLoader
                         if (apiGetReq.Length >= 2043)
                         {
                             apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
-                            await CallApiAndLoadDailyData(apiGetReq);
+                            CallApiAndLoadDailyData(apiGetReq);
                             apiGetReq = getLastPriceURL;
                         }
                         else
@@ -229,10 +231,12 @@ namespace StockPriceLoader
                             apiGetReq += company.Ticker + ",";
                         }
                     }
+                    apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
+                    CallApiAndLoadDailyData(apiGetReq);
 
 
 
-                    
+
                 }
                 catch (Exception ex)
                 {
