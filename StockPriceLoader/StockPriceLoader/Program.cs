@@ -50,11 +50,8 @@ namespace StockPriceLoader
                     if (marketStatus.is_open)
                     {
 
-                        await LoadAndPopulateBarsData();
-                        DateTime now = DateTime.UtcNow;
-                        DateTime nextMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc).AddMinutes(1);
-                        TimeSpan delay = nextMinute - now;
-                        await Task.Delay(delay);
+                        LoadAndPopulateBarsData();
+                        await Task.Delay(60000);
                     }
                     else
                     {
@@ -108,7 +105,6 @@ namespace StockPriceLoader
                     //The character count of this + the other necessary gets is 80
                     // max get req length is 2048 so 2048 - 
                     string apiGetReq = getLastPriceURL;
-                    List<Task> runningTasks = new List<Task>();
 
                     foreach (Company company in companies)
                     {
@@ -117,13 +113,8 @@ namespace StockPriceLoader
                         if (apiGetReq.Length >= 2043)
                         {
                             apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
-                            
-                            runningTasks.Add(Task.Factory.StartNew(() => {
-                                CallApiAndLoadMinuteData(apiGetReq);
-                                // Code to run in parallel
-                            }, TaskCreationOptions.LongRunning));
+                            CallApiAndLoadMinuteData(apiGetReq);
                             apiGetReq = getLastPriceURL;
-                            //Small Delay before continuing to load data
                         }
                         else
                         {
@@ -132,12 +123,7 @@ namespace StockPriceLoader
 
                     }
                     apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
-                    runningTasks.Add(Task.Factory.StartNew(() => {
-                        CallApiAndLoadMinuteData(apiGetReq);
-                        // Code to run in parallel
-                    }, TaskCreationOptions.LongRunning));
-                    await Task.WhenAll(runningTasks);
-
+                    CallApiAndLoadMinuteData(apiGetReq);
                 }
                 catch (Exception ex)
                 {
