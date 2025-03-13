@@ -51,7 +51,11 @@ namespace StockPriceLoader
                     {
 
                         LoadAndPopulateBarsData();
-                        await Task.Delay(60000);
+
+                        //Since we are using await calls I want to calculate time until next minute.
+                        var now = DateTime.UtcNow;
+                        var delay = TimeSpan.FromMilliseconds(60000 - now.Second * 1000 - now.Millisecond);
+                        await Task.Delay(delay);
                     }
                     else
                     {
