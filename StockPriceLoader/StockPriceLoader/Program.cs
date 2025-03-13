@@ -148,6 +148,8 @@ namespace StockPriceLoader
 
                         // Send GET request to the URL
                         Log.Debug("Getting Current Prices..");
+                        //Sleep 10 seconds to the api can catch up..
+                        await Task.Delay(10000);
                         HttpResponseMessage response = await client.GetAsync(apiGetReq);
                         string resp = await response.Content.ReadAsStringAsync();
                         // Ensure the request was successful
