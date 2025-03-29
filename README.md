@@ -14,7 +14,7 @@ The DB has two main uses:
 # Running
 
 I have this application running on a Windows 2019 server with it as a scheduled task while market time is active. You can schedule this to run at different times throughout the day if you want only certain timeframes that is all configurable through task scheduler.
-
+It uses a PG DB to store the data.
 # MultiThreaded
 
 This can make up to 200 requests a minute (limit of the free tier of AlpacaMarkets API). Because of that I run multiple multiple threads for efficiency otherwise this would be IO bound and very slow.
