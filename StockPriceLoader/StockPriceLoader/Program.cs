@@ -7,6 +7,7 @@ using Serilog;
 using Serilog.Sinks.PostgreSQL;
 using StockPriceLoader.Helpers;
 using StockPriceLoader.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace StockPriceLoader
 {
@@ -118,7 +119,7 @@ namespace StockPriceLoader
                         }
                         else
                         {
-                            apiGetReq += company.Ticker + ",";
+                            apiGetReq += company.Symbol + ",";
                         }
 
                     }
@@ -169,13 +170,24 @@ namespace StockPriceLoader
                                 // Output some of the data
                                 foreach (var bar in bars.bars)
                                 {
-                                    context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
-
+                                    try
+                                    {
+                                        context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
+                                        Log.Debug("Data added to object list.", bar);
+                                        
+                                    }
+                                    catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
+                                    {
+                                        Log.Information("Duplicate entry found and ignored.", bar);
+                                    }
+                                    catch
+                                    {
+                                        //If any other error happens here other than unique constraint. We throw the exception to the next level.
+                                        throw;
+                                    }
                                 }
-                                Log.Debug("Committing price add to table");
                                 context.SaveChanges();
                                 transaction.Commit();
-
                                 Log.Information("Process loaded data successfully.");
 
                             }
