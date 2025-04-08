@@ -7,6 +7,7 @@ using Serilog;
 using Serilog.Sinks.PostgreSQL;
 using StockPriceLoader.Helpers;
 using StockPriceLoader.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace StockPriceLoader
 {
@@ -26,7 +27,7 @@ namespace StockPriceLoader
                 { "message", new RenderedMessageColumnWriter() },
                 { "message_template", new MessageTemplateColumnWriter() },
                 { "level", new LevelColumnWriter() },
-                { "time_stamp", new TimestampColumnWriter() },
+                { "timestamp", new TimestampColumnWriter() },
                 { "exception", new ExceptionColumnWriter() },
                 { "properties", new PropertiesColumnWriter() }
             };
@@ -55,6 +56,8 @@ namespace StockPriceLoader
                         //Since we are using await calls I want to calculate time until next minute.
                         var now = DateTime.UtcNow;
                         var delay = TimeSpan.FromMilliseconds(60000 - now.Second * 1000 - now.Millisecond);
+                        //Add 15 seconds to the minute to give Alpaca API some time to get most up to date info.
+                        delay += 15000;
                         await Task.Delay(delay);
                     }
                     else
@@ -122,7 +125,7 @@ namespace StockPriceLoader
                         }
                         else
                         {
-                            apiGetReq += company.Ticker + ",";
+                            apiGetReq += company.Symbol + ",";
                         }
 
                     }
@@ -172,17 +175,30 @@ namespace StockPriceLoader
                         {
                             try
                             {
+                                int amountInserted = 0;
+                                int amountIgnored = 0;
                                 // Output some of the data
                                 foreach (var bar in bars.bars)
                                 {
-                                    context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
-
+                                    try
+                                    {
+                                        context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
+                                        amountInserted++;
+                                        
+                                    }
+                                    catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
+                                    {
+                                        amountIgnored++;
+                                    }
+                                    catch
+                                    {
+                                        //If any other error happens here other than unique constraint. We throw the exception to the next level.
+                                        throw;
+                                    }
                                 }
-                                Log.Debug("Committing price add to table");
                                 context.SaveChanges();
                                 transaction.Commit();
-
-                                Log.Information("Process loaded data successfully.");
+                                Log.Information("Process minute data successfully. Number Inserted: " + amountInserted + " Number of Duplicates Ignored: " + amountIgnored);
 
                             }
                             catch (Exception ex)
@@ -234,7 +250,7 @@ namespace StockPriceLoader
                         }
                         else
                         {
-                            apiGetReq += company.Ticker + ",";
+                            apiGetReq += company.Symbol + ",";
                         }
                     }
                     apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
@@ -286,16 +302,32 @@ namespace StockPriceLoader
                         {
                             try
                             {
+                                int amountInserted = 0;
+                                int amountIgnored = 0;
                                 // Output some of the data
                                 foreach (var bar in bars.bars)
                                 {
-                                    context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
+                                    try
+                                    {
+                                        //Add record to DB
+                                        context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
+                                        amountInserted++;
+                                    }
+                                    catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
+                                    {
+                                        amountIgnored++;
+                                    }
+                                    catch
+                                    {
+                                        throw;
+                                    }
+                                    
 
                                 }
 
                                 context.SaveChanges();
                                 transaction.Commit();
-
+                                Log.Information("Daily data successfully loaded. Number Inserted: " + amountInserted + " Number of Duplicates Ignored: " + amountIgnored);
 
 
                             }

@@ -32,7 +32,7 @@ public class AppDbContext : DbContext
             .Property(c => c.Id).HasColumnName("id").IsRequired();
 
         modelBuilder.Entity<Company>()
-            .Property(c => c.Ticker).HasColumnName("ticker").IsRequired().HasMaxLength(10);
+            .Property(c => c.Symbol).HasColumnName("symbol").IsRequired().HasMaxLength(10);
 
         modelBuilder.Entity<Company>()
             .Property(c => c.CompanyDescription).HasColumnName("company_description").IsRequired();
