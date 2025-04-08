@@ -55,9 +55,10 @@ namespace StockPriceLoader
 
                         //Since we are using await calls I want to calculate time until next minute.
                         var now = DateTime.UtcNow;
-                        var delay = TimeSpan.FromMilliseconds(60000 - now.Second * 1000 - now.Millisecond);
                         //Add 15 seconds to the minute to give Alpaca API some time to get most up to date info.
-                        delay += 15000;
+                        var delay = TimeSpan.FromMilliseconds((60000 - now.Second * 1000 - now.Millisecond) + 15000);
+                        
+
                         await Task.Delay(delay);
                     }
                     else
