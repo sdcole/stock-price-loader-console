@@ -27,7 +27,7 @@ namespace StockPriceLoader
                 { "message", new RenderedMessageColumnWriter() },
                 { "message_template", new MessageTemplateColumnWriter() },
                 { "level", new LevelColumnWriter() },
-                { "time_stamp", new TimestampColumnWriter() },
+                { "timestamp", new TimestampColumnWriter() },
                 { "exception", new ExceptionColumnWriter() },
                 { "properties", new PropertiesColumnWriter() }
             };
@@ -167,18 +167,20 @@ namespace StockPriceLoader
                         {
                             try
                             {
+                                int amountInserted = 0;
+                                int amountIgnored = 0;
                                 // Output some of the data
                                 foreach (var bar in bars.bars)
                                 {
                                     try
                                     {
                                         context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
-                                        Log.Debug("Data added to object list.", bar);
+                                        amountInserted++;
                                         
                                     }
                                     catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
                                     {
-                                        Log.Information("Duplicate entry found and ignored.", bar);
+                                        amountIgnored++;
                                     }
                                     catch
                                     {
@@ -188,7 +190,7 @@ namespace StockPriceLoader
                                 }
                                 context.SaveChanges();
                                 transaction.Commit();
-                                Log.Information("Process loaded data successfully.");
+                                Log.Information("Process minute data successfully. Number Inserted: " + amountInserted + " Number of Duplicates Ignored: " + amountIgnored);
 
                             }
                             catch (Exception ex)
@@ -240,7 +242,7 @@ namespace StockPriceLoader
                         }
                         else
                         {
-                            apiGetReq += company.Ticker + ",";
+                            apiGetReq += company.Symbol + ",";
                         }
                     }
                     apiGetReq = apiGetReq.Substring(0, apiGetReq.Length - 1);
@@ -292,16 +294,32 @@ namespace StockPriceLoader
                         {
                             try
                             {
+                                int amountInserted = 0;
+                                int amountIgnored = 0;
                                 // Output some of the data
                                 foreach (var bar in bars.bars)
                                 {
-                                    context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
+                                    try
+                                    {
+                                        //Add record to DB
+                                        context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
+                                        amountInserted++;
+                                    }
+                                    catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
+                                    {
+                                        amountIgnored++;
+                                    }
+                                    catch
+                                    {
+                                        throw;
+                                    }
+                                    
 
                                 }
 
                                 context.SaveChanges();
                                 transaction.Commit();
-
+                                Log.Information("Daily data successfully loaded. Number Inserted: " + amountInserted + " Number of Duplicates Ignored: " + amountIgnored);
 
 
                             }
