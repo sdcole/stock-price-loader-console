@@ -13,7 +13,6 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Company> Companies { get; set; }
-    public DbSet<StockPrice> StockPrices { get; set; }
     public DbSet<MinuteBarData> MinuteBars { get; set; }
     public DbSet<DailyBarData> DailyBars { get; set; }
 
@@ -39,86 +38,6 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Company>()
             .Property(c => c.Sector).HasColumnName("sector").IsRequired().HasMaxLength(100);
-
-        // Configure StockPrice entity
-        modelBuilder.Entity<StockPrice>().ToTable("stock_prices");
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Id).HasColumnName("id").IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Ticker).HasColumnName("ticker").IsRequired().HasMaxLength(10);
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.TradePrice).HasColumnName("trade_price").IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Timestamp).HasColumnName("timestamp").IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.TradeSize).HasColumnName("trade_size").IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Exchange).HasColumnName("exchange").IsRequired().HasMaxLength(10);
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Tape).HasColumnName("tape").IsRequired().HasMaxLength(1);
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Conditions).HasColumnName("conditions");
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.UpdateStatus).HasColumnName("update_status");
-
-        // Configure StockPrice entity
-        modelBuilder.Entity<StockPrice>()
-            .ToTable("stock_prices");
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Id)
-            .HasColumnName("id")
-            .IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Ticker)
-            .HasColumnName("ticker")
-            .IsRequired()
-            .HasMaxLength(10);
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.TradePrice)
-            .HasColumnName("trade_price")
-            .IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Timestamp)
-            .HasColumnName("timestamp")
-            .IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.TradeSize)
-            .HasColumnName("trade_size")
-            .IsRequired();
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Exchange)
-            .HasColumnName("exchange")
-            .IsRequired()
-            .HasMaxLength(10);
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Tape)
-            .HasColumnName("tape")
-            .IsRequired()
-            .HasMaxLength(1);
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.Conditions)
-            .HasColumnName("conditions");
-
-        modelBuilder.Entity<StockPrice>()
-            .Property(sr => sr.UpdateStatus)
-            .HasColumnName("update_status");
 
         // Configure MinuteBarData entity
         modelBuilder.Entity<MinuteBarData>().ToTable("minute_bars");
