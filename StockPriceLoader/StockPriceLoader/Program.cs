@@ -47,7 +47,6 @@ namespace StockPriceLoader
                     Log.Debug("In Loop");
                     //Check if the market is open
                     StockMarketStatus marketStatus = await MarketHelper.MarketIsOpen();
-
                     if (marketStatus.is_open)
                     {
 
@@ -157,7 +156,7 @@ namespace StockPriceLoader
                         // Send GET request to the URL
                         Log.Debug("Getting Current Prices..");
                         //Sleep 10 seconds to the api can catch up..
-                        await Task.Delay(10000);
+                        //await Task.Delay(10000);
                         HttpResponseMessage response = await client.GetAsync(apiGetReq);
                         string resp = await response.Content.ReadAsStringAsync();
                         // Ensure the request was successful
@@ -178,37 +177,38 @@ namespace StockPriceLoader
                             {
                                 int amountInserted = 0;
                                 int amountIgnored = 0;
-                                // Output some of the data
-                                foreach (var bar in bars.bars)
-                                {
-                                    try
-                                    {
-                                        context.MinuteBars.Add(new MinuteBarData(bar.Key, bar.Value));
-                                        amountInserted++;
-                                        
-                                    }
-                                    catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
-                                    {
-                                        amountIgnored++;
-                                    }
-                                    catch
-                                    {
-                                        //If any other error happens here other than unique constraint. We throw the exception to the next level.
-                                        throw;
-                                    }
-                                }
-                                context.SaveChanges();
+
+                                // Build the SQL values string for bulk insert
+                                var sqlValues = string.Join(", ", bars.bars.Select(bar =>
+                                    $"('{bar.Key}', '{bar.Value.t:yyyy-MM-dd HH:mm:ss}', {bar.Value.o}, {bar.Value.h}, {bar.Value.l}, {bar.Value.c}, {bar.Value.v}, {bar.Value.n}, {bar.Value.vw})"));
+
+                                // Build the complete SQL query for the bulk insert
+                                var sql = $@"
+                                    INSERT INTO minute_bars (symbol, timestamp, open, high, low, close, volume, trade_count, vw)
+                                    VALUES {sqlValues}
+                                    ON CONFLICT (symbol, timestamp) DO NOTHING;";  // Handle conflict by doing nothing for duplicates
+
+                                // Execute the raw SQL query
+                                var rowsAffected = await context.Database.ExecuteSqlRawAsync(sql);
+
+                                // Assuming `rowsAffected` gives the number of successfully inserted rows
+                                amountInserted = rowsAffected;
+                                amountIgnored = bars.bars.Count - amountInserted;
+                                // If any records were inserted, log the results
+                                Log.Information($"Process minute data successfully. Number Inserted: {amountInserted} Number of Duplicates Ignored: {amountIgnored}");
+
+                                // Commit the transaction
                                 transaction.Commit();
-                                Log.Information("Process minute data successfully. Number Inserted: " + amountInserted + " Number of Duplicates Ignored: " + amountIgnored);
 
                             }
                             catch (Exception ex)
                             {
-                                Log.Error("Failed to insert records into table, Rolling back..", ex);
+                                // In case of error, roll back the transaction
+                                Log.Error("Failed to insert records into table, Rolling back...", ex);
                                 transaction.Rollback();
                             }
-
                         }
+
 
                     }
                     catch (Exception ex)
@@ -303,41 +303,51 @@ namespace StockPriceLoader
                         {
                             try
                             {
-                                int amountInserted = 0;
-                                int amountIgnored = 0;
-                                // Output some of the data
-                                foreach (var bar in bars.bars)
+                                if (bars.bars.Count == 0)
                                 {
-                                    try
-                                    {
-                                        //Add record to DB
-                                        context.DailyBars.Add(new DailyBarData(bar.Key, bar.Value[0]));
-                                        amountInserted++;
-                                    }
-                                    catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique") == true)
-                                    {
-                                        amountIgnored++;
-                                    }
-                                    catch
-                                    {
-                                        throw;
-                                    }
-                                    
-
+                                    Log.Information("No Daily Data found to insert");
                                 }
+                                else
+                                {
+                                    int amountInserted = 0;
+                                    int amountIgnored = 0;
 
-                                context.SaveChanges();
-                                transaction.Commit();
-                                Log.Information("Daily data successfully loaded. Number Inserted: " + amountInserted + " Number of Duplicates Ignored: " + amountIgnored);
+                                    // Build the SQL values string for bulk insert
+                                    var sqlValues = string.Join(", ", bars.bars.SelectMany(bar =>
+                                        bar.Value.Select(b =>
+                                            $"('{bar.Key}', '{b.t:yyyy-MM-dd}', {b.o}, {b.h}, {b.l}, {b.c}, {b.v})")));
 
+                                    // Build the complete SQL query for the bulk insert
+                                    var sql = $@"
+                                    INSERT INTO daily_bars (symbol, timestamp, open, high, low, close, volume)
+                                    VALUES {sqlValues}
+                                    ON CONFLICT (symbol, timestamp) DO NOTHING;";  // Handle conflict by doing nothing for duplicates
 
+                                    // Execute the raw SQL query
+                                    var rowsAffected = await context.Database.ExecuteSqlRawAsync(sql);
+
+                                    // Assuming `rowsAffected` gives the number of successfully inserted rows
+                                    amountInserted = rowsAffected;
+                                    amountIgnored = bars.bars.Count - amountInserted;
+                                    // If any records were inserted, log the results
+                                    Log.Information($"Daily data successfully loaded. Number Inserted: {amountInserted} Number of Duplicates Ignored: {amountIgnored}");
+
+                                    // Commit the transaction
+                                    transaction.Commit();
+                                }
+                                
                             }
                             catch (Exception ex)
                             {
+                                // In case of error, roll back the transaction
                                 Log.Error(ex, "There was an issue saving to database");
                                 transaction.Rollback();
                             }
                         }
+
+
+
+
 
                     }
                     catch (Exception ex)
