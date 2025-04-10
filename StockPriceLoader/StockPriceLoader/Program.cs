@@ -38,7 +38,7 @@ namespace StockPriceLoader
                 .WriteTo.PostgreSQL(EncryptionHelper.Decrypt(ConfigurationService.Configuration["ConnectionStrings:LoggingConnection"]), "logs", columnOptions, needAutoCreateTable: true)
                 .CreateLogger();
 
-            //Log.Information("App Started");
+            Log.Information($"App {ConfigurationService.Configuration["APP_NAME"]} has Started");
             try
             {
                 //Initial loop to keep app persistant
@@ -54,8 +54,8 @@ namespace StockPriceLoader
 
                         //Since we are using await calls I want to calculate time until next minute.
                         var now = DateTime.UtcNow;
-                        //Add 15 seconds to the minute to give Alpaca API some time to get most up to date info.
-                        var delay = TimeSpan.FromMilliseconds((60000 - now.Second * 1000 - now.Millisecond) + 15000);
+                        //Add 10 seconds to the minute to give Alpaca API some time to get most up to date info.
+                        var delay = TimeSpan.FromMilliseconds((60000 - now.Second * 1000 - now.Millisecond) + 10000);
                         
 
                         await Task.Delay(delay);
@@ -95,11 +95,12 @@ namespace StockPriceLoader
 
 
         /*
-                 *  LoadAndPopulateBarsData
-                 * 
-                 * This function gets a list of tickers from the DB. Then it kicks off async api calls so that it can handle large lists.
-                 * 
-                 */
+        *  LoadAndPopulateBarsData
+        * 
+        * This function gets a list of tickers from the DB. 
+        * Then it kicks off async api calls so that it can handle large lists.
+        * 
+        */
         public static async Task LoadAndPopulateBarsData()
         {
             using (AppDbContext context = new AppDbContext())
