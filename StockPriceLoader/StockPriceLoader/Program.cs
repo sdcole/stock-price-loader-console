@@ -313,16 +313,14 @@ namespace StockPriceLoader
                                     int amountInserted = 0;
                                     int amountIgnored = 0;
 
-                                    // Build the SQL values string for bulk insert
                                     var sqlValues = string.Join(", ", bars.bars.SelectMany(bar =>
                                         bar.Value.Select(b =>
-                                            $"('{bar.Key}', '{b.t:yyyy-MM-dd}', {b.o}, {b.h}, {b.l}, {b.c}, {b.v})")));
+                                        $"('{bar.Key}', '{b.t:yyyy-MM-dd}', {b.o}, {b.h}, {b.l}, {b.c}, {b.v}, {b.n}, {b.vw})")));
 
-                                    // Build the complete SQL query for the bulk insert
                                     var sql = $@"
-                                    INSERT INTO daily_bars (symbol, timestamp, open, high, low, close, volume)
-                                    VALUES {sqlValues}
-                                    ON CONFLICT (symbol, timestamp) DO NOTHING;";  // Handle conflict by doing nothing for duplicates
+                                        INSERT INTO daily_bars (symbol, timestamp, open, high, low, close, volume, trade_count, vw)
+                                        VALUES {sqlValues}
+                                        ON CONFLICT (symbol, timestamp) DO NOTHING;";
 
                                     // Execute the raw SQL query
                                     var rowsAffected = await context.Database.ExecuteSqlRawAsync(sql);
