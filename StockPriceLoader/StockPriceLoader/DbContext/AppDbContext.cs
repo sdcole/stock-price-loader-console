@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Serilog;
 using StockPriceLoader.Helpers;
 using StockPriceLoader.Models;
 using StockPriceLoader.Services;
@@ -18,6 +19,13 @@ public class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        if (ConfigurationService.Configuration["ConnectionStrings:AppConnection"] == null)
+        {
+            Exception ex = new Exception("Connection string 'AppConnection' is not configured in appsettings.json.");
+            Log.Error(ex, "Connection string 'AppConnection' is not configured in appsettings.json.");
+            throw ex;
+        }
+
         var connectionString = EncryptionHelper.Decrypt(ConfigurationService.Configuration["ConnectionStrings:AppConnection"]);
         optionsBuilder.UseNpgsql(connectionString);
     }

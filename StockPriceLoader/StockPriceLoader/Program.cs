@@ -8,6 +8,7 @@ using Serilog.Sinks.PostgreSQL;
 using StockPriceLoader.Helpers;
 using StockPriceLoader.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace StockPriceLoader
 {
@@ -41,6 +42,8 @@ namespace StockPriceLoader
             Log.Information($"App {ConfigurationService.Configuration["APP_NAME"]} has Started");
             try
             {
+
+
                 //Initial loop to keep app persistant
                 while (true)
                 {
@@ -64,6 +67,8 @@ namespace StockPriceLoader
                     {
                         //Load the bar info for the entire day after the market closes.
                         await LoadAndPopulateDailyBarsData();
+                        await CalculateAndLoadDailySummary();
+                        //Afer we load the days bar data we then summarize the data and load it into the db.
                         Log.Information("Sleeping till market open: " + marketStatus.next_open);
                         //If the market is not open sleep until it opens
                         //This is done in utc so that it matches server time.
@@ -80,6 +85,7 @@ namespace StockPriceLoader
                         }
                     }
                 }
+                
             }
             catch (Exception ex)
             {
@@ -91,9 +97,114 @@ namespace StockPriceLoader
         }
 
 
+        /**
+         *  CalculateAndLoadDailySummary
+         *  
+         *  This will calculate the day's summary data and load it into the db.
+         * 
+         * 
+         * 
+         **/
+        public static async Task CalculateAndLoadDailySummary()
+        {
+
+            if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Saturday || DateTime.UtcNow.DayOfWeek == DayOfWeek.Sunday)
+            {
+                Log.Information("Market is closed for the weekend. Skipping daily summary load.");
+                //return;
+            }
+                
+            Log.Information("Calculating and Loading Daily Summary Data");
+            using (AppDbContext context = new AppDbContext())
+            {
+                try
+                {
+                    List<Company> companies = context.Companies.ToList();
+                    List<DailySummary> dailySummaries = new List<DailySummary>();
+                    //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
+                    foreach (Company company in companies)
+                    {
+                        Log.Debug("Calculating Daily Summary for " + company.Symbol);
+                        DailySummary summary = await DailySummaryHelper.CalculateDailySummaryForSymbol(company.Symbol);
+
+                        if (summary != null) {
+                            dailySummaries.Add(summary);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+
+                    }
+                    int insertedSummaries = await InsertDailySummaries(dailySummaries);
+                    Log.Information($"Inserted {insertedSummaries} of Daily Summaries.");
 
 
 
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "There was an issue getting Company list from database");
+                }
+            }
+        }
+
+        public static async Task<int> InsertDailySummaries(List<DailySummary> summaries)
+        {
+            using (AppDbContext context = new AppDbContext())
+            {
+
+                using (IDbContextTransaction transaction = context.Database.BeginTransaction())
+                {
+                    try
+                    {
+                        var sql = new StringBuilder();
+                        var parameters = new List<object>();
+
+                        sql.Append("INSERT INTO daily_summaries (symbol, date, return_1d, return_5d, volatility_5d, volatility_10d, sma_5, sma_10, rsi_14, bollinger_bandwidth, volume_avg_5d, volume_ratio) VALUES ");
+
+                        for (int i = 0; i < summaries.Count; i++)
+                        {
+                            sql.Append($"(@p{i}_Symbol, @p{i}_Date, @p{i}_Return1d, @p{i}_Return5d, @p{i}_Volatility5d, @p{i}_Volatility10d, @p{i}_Sma5, @p{i}_Sma10, @p{i}_Rsi14, @p{i}_BollingerBandwidth, @p{i}_VolumeAvg5d, @p{i}_VolumeRatio),");
+
+                            var s = summaries[i];
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Symbol", s.Symbol));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Date", s.Date));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Return1d", (object?)s.Return1d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Return5d", (object?)s.Return5d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Volatility5d", (object?)s.Volatility5d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Volatility10d", (object?)s.Volatility10d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Sma5", (object?)s.Sma5 ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Sma10", (object?)s.Sma10 ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Rsi14", (object?)s.Rsi14 ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_BollingerBandwidth", (object?)s.BollingerBandwidth ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_VolumeAvg5d", (object?)s.VolumeAvg5d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_VolumeRatio", (object?)s.VolumeRatio ?? DBNull.Value));
+
+                        }
+
+                        sql.Length--; // Remove last comma
+                        sql.Append(" ON CONFLICT (symbol, date) DO NOTHING;");
+
+                        
+
+                        Log.Debug("Executing SQL Query for Bulk Insert:" + sql);
+                        // Execute the raw SQL query
+                        int rowsAffected = await context.Database.ExecuteSqlRawAsync(sql.ToString(), parameters.ToArray()); ;
+                        transaction.Commit();
+                        return rowsAffected;
+                    }
+                    catch (Exception ex)
+                    {
+                        // In case of error, roll back the transaction
+                        Log.Error("Failed to insert records into table, Rolling back...", ex);
+                        transaction.Rollback();
+                        return 0;
+                    }
+                }
+            }
+        }
         /*
         *  LoadAndPopulateBarsData
         * 
@@ -179,7 +290,7 @@ namespace StockPriceLoader
                                 int amountInserted = 0;
                                 int amountIgnored = 0;
 
-                                // Build the SQL values string for bulk insert
+
                                 var sqlValues = string.Join(", ", bars.bars.Select(bar =>
                                     $"('{bar.Key}', '{bar.Value.t:yyyy-MM-dd HH:mm:ss}', {bar.Value.o}, {bar.Value.h}, {bar.Value.l}, {bar.Value.c}, {bar.Value.v}, {bar.Value.n}, {bar.Value.vw})"));
 
@@ -189,6 +300,7 @@ namespace StockPriceLoader
                                     VALUES {sqlValues}
                                     ON CONFLICT (symbol, timestamp) DO NOTHING;";  // Handle conflict by doing nothing for duplicates
 
+                                Log.Debug("Executing SQL Query for Bulk Insert:" + sql);
                                 // Execute the raw SQL query
                                 var rowsAffected = await context.Database.ExecuteSqlRawAsync(sql);
 
@@ -322,6 +434,7 @@ namespace StockPriceLoader
                                         VALUES {sqlValues}
                                         ON CONFLICT (symbol, timestamp) DO NOTHING;";
 
+                                    Log.Debug("Executing SQL Query for Bulk Insert:" + sql);
                                     // Execute the raw SQL query
                                     var rowsAffected = await context.Database.ExecuteSqlRawAsync(sql);
 
