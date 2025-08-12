@@ -67,7 +67,8 @@ namespace StockPriceLoader
                     {
                         //Load the bar info for the entire day after the market closes.
                         await LoadAndPopulateDailyBarsData();
-                        await CalculateAndLoadDailySummary();
+                        await CalculateAndLoadSymbolDailySummary();
+                        await CalculateAndLoadSectorDailySummary();
                         //Afer we load the days bar data we then summarize the data and load it into the db.
                         Log.Information("Sleeping till market open: " + marketStatus.next_open);
                         //If the market is not open sleep until it opens
@@ -105,7 +106,7 @@ namespace StockPriceLoader
          * 
          * 
          **/
-        public static async Task CalculateAndLoadDailySummary()
+        public static async Task CalculateAndLoadSymbolDailySummary()
         {
 
             if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Saturday || DateTime.UtcNow.DayOfWeek == DayOfWeek.Sunday)
@@ -120,12 +121,12 @@ namespace StockPriceLoader
                 try
                 {
                     List<Company> companies = context.Companies.ToList();
-                    List<DailySummary> dailySummaries = new List<DailySummary>();
+                    List<SymbolDailySummary> dailySummaries = new List<SymbolDailySummary>();
                     //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
                     foreach (Company company in companies)
                     {
                         Log.Debug("Calculating Daily Summary for " + company.Symbol);
-                        DailySummary summary = await DailySummaryHelper.CalculateDailySummaryForSymbol(company.Symbol);
+                        SymbolDailySummary summary = await SymbolDailySummaryHelper.CalculateDailySummaryForSymbol(company.Symbol);
 
                         if (summary != null) {
                             dailySummaries.Add(summary);
@@ -137,7 +138,7 @@ namespace StockPriceLoader
 
 
                     }
-                    int insertedSummaries = await InsertDailySummaries(dailySummaries);
+                    int insertedSummaries = await SymbolDailySummaryHelper.InsertDailySummaries(dailySummaries);
                     Log.Information($"Inserted {insertedSummaries} of Daily Summaries.");
 
 
@@ -150,61 +151,7 @@ namespace StockPriceLoader
             }
         }
 
-        public static async Task<int> InsertDailySummaries(List<DailySummary> summaries)
-        {
-            using (AppDbContext context = new AppDbContext())
-            {
-
-                using (IDbContextTransaction transaction = context.Database.BeginTransaction())
-                {
-                    try
-                    {
-                        var sql = new StringBuilder();
-                        var parameters = new List<object>();
-
-                        sql.Append("INSERT INTO daily_summaries (symbol, date, return_1d, return_5d, volatility_5d, volatility_10d, sma_5, sma_10, rsi_14, bollinger_bandwidth, volume_avg_5d, volume_ratio) VALUES ");
-
-                        for (int i = 0; i < summaries.Count; i++)
-                        {
-                            sql.Append($"(@p{i}_Symbol, @p{i}_Date, @p{i}_Return1d, @p{i}_Return5d, @p{i}_Volatility5d, @p{i}_Volatility10d, @p{i}_Sma5, @p{i}_Sma10, @p{i}_Rsi14, @p{i}_BollingerBandwidth, @p{i}_VolumeAvg5d, @p{i}_VolumeRatio),");
-
-                            var s = summaries[i];
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Symbol", s.Symbol));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Date", s.Date));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Return1d", (object?)s.Return1d ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Return5d", (object?)s.Return5d ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Volatility5d", (object?)s.Volatility5d ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Volatility10d", (object?)s.Volatility10d ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Sma5", (object?)s.Sma5 ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Sma10", (object?)s.Sma10 ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Rsi14", (object?)s.Rsi14 ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_BollingerBandwidth", (object?)s.BollingerBandwidth ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_VolumeAvg5d", (object?)s.VolumeAvg5d ?? DBNull.Value));
-                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_VolumeRatio", (object?)s.VolumeRatio ?? DBNull.Value));
-
-                        }
-
-                        sql.Length--; // Remove last comma
-                        sql.Append(" ON CONFLICT (symbol, date) DO NOTHING;");
-
-                        
-
-                        Log.Debug("Executing SQL Query for Bulk Insert:" + sql);
-                        // Execute the raw SQL query
-                        int rowsAffected = await context.Database.ExecuteSqlRawAsync(sql.ToString(), parameters.ToArray()); ;
-                        transaction.Commit();
-                        return rowsAffected;
-                    }
-                    catch (Exception ex)
-                    {
-                        // In case of error, roll back the transaction
-                        Log.Error("Failed to insert records into table, Rolling back...", ex);
-                        transaction.Rollback();
-                        return 0;
-                    }
-                }
-            }
-        }
+        
         /*
         *  LoadAndPopulateBarsData
         * 
@@ -469,6 +416,32 @@ namespace StockPriceLoader
                 }
 
             }
+        }
+
+
+        /**
+         * CalculateAndLoadSectorDailySummary
+         * 
+         * This function will pull data from multiple places including (sector, symbol_daily_summaries, and daily_bars) to calculate the sector summary data.
+         * Weighted averages will be calculated to better represent the sector as a whole.
+         * 
+         **/
+        public static async Task CalculateAndLoadSectorDailySummary(){
+            try
+            {
+                //TODO: Get SymbolDailySummaries and DailyBars from the database and calculate the weighted averages.
+                using (AppDbContext context = new AppDbContext())
+                {   List<Sector> sectorsList = await context.Sectors.ToListAsync();
+                    foreach (Sector sector in sectorsList)
+                    {
+                        List<Company> companiesList = await context.Companies.Where(d => d.SectorId == sector.Id).ToListAsync();
+
+                        List<SymbolDailySummaries> symbolSummaries = await context.SymbolDailySummaries.ToListAsync());
+                    }
+                    
+                }
+            }
+            
         }
     }
 

@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Company> Companies { get; set; }
     public DbSet<MinuteBarData> MinuteBars { get; set; }
     public DbSet<DailyBarData> DailyBars { get; set; }
+    public DbSet<Sector> Sectors { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -45,7 +46,38 @@ public class AppDbContext : DbContext
             .Property(c => c.CompanyDescription).HasColumnName("company_description").IsRequired();
 
         modelBuilder.Entity<Company>()
-            .Property(c => c.Sector).HasColumnName("sector").IsRequired().HasMaxLength(100);
+            .Property(c => c.SectorId).HasColumnName("sector_id").IsRequired();
+
+
+        //Sectors
+        modelBuilder.Entity<Sector>().ToTable("sectors");
+
+        modelBuilder.Entity<Sector>()
+            .HasKey(s => s.Id);
+
+        modelBuilder.Entity<Sector>()
+            .Property(s => s.Id)
+            .HasColumnName("id")
+            .IsRequired();
+
+        modelBuilder.Entity<Sector>()
+            .Property(s => s.SectorName)
+            .HasColumnName("sector_name")
+            .IsRequired()
+            .HasMaxLength(100);
+
+        modelBuilder.Entity<Sector>()
+            .Property(s => s.SectorType)
+            .HasColumnName("sector_type")
+            .IsRequired()
+            .HasMaxLength(50);
+
+        modelBuilder.Entity<Sector>()
+            .Property(s => s.Description)
+            .HasColumnName("description")
+            .HasMaxLength(500);
+
+
 
         // Configure MinuteBarData entity
         modelBuilder.Entity<MinuteBarData>().ToTable("minute_bars");

@@ -10,7 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace StockPriceLoader.Models
 {
     
-    public class DailySummary
+    public class SymbolDailySummary
     {
 
         public long Id { get; set; }

@@ -5,12 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Serilog;
 using StockPriceLoader.Models;
 
 namespace StockPriceLoader.Helpers
 {
-    public class DailySummaryHelper
+    public class SymbolDailySummaryHelper
     {
 
         /**
@@ -20,7 +21,7 @@ namespace StockPriceLoader.Helpers
          * Returns an instance of DailySummary with the calculated values or NULL if there is not enough data to calculate the summary.
          *
          **/
-        public static async Task<DailySummary> CalculateDailySummaryForSymbol(string symbol)
+        public static async Task<SymbolDailySummary> CalculateDailySummaryForSymbol(string symbol)
         {
             using (AppDbContext context = new AppDbContext())
             {
@@ -39,7 +40,7 @@ namespace StockPriceLoader.Helpers
                             + " to calculate summary information for: " + DateTime.UtcNow.Date);
                         return null;
                     }
-                    DailySummary dailySummary = new DailySummary
+                    SymbolDailySummary dailySummary = new SymbolDailySummary
                     {
                         Symbol = symbol,
                         Date = DateTime.UtcNow.Date // Set to today's date
@@ -198,6 +199,62 @@ namespace StockPriceLoader.Helpers
             {
                 Log.Error(ex, "Error calculating returns for daily bar data.");
                 return null;
+            }
+        }
+
+        public static async Task<int> InsertDailySummaries(List<SymbolDailySummary> summaries)
+        {
+            using (AppDbContext context = new AppDbContext())
+            {
+
+                using (IDbContextTransaction transaction = context.Database.BeginTransaction())
+                {
+                    try
+                    {
+                        var sql = new StringBuilder();
+                        var parameters = new List<object>();
+
+                        sql.Append("INSERT INTO symbol_daily_summaries (symbol, date, return_1d, return_5d, volatility_5d, volatility_10d, sma_5, sma_10, rsi_14, bollinger_bandwidth, volume_avg_5d, volume_ratio) VALUES ");
+
+                        for (int i = 0; i < summaries.Count; i++)
+                        {
+                            sql.Append($"(@p{i}_Symbol, @p{i}_Date, @p{i}_Return1d, @p{i}_Return5d, @p{i}_Volatility5d, @p{i}_Volatility10d, @p{i}_Sma5, @p{i}_Sma10, @p{i}_Rsi14, @p{i}_BollingerBandwidth, @p{i}_VolumeAvg5d, @p{i}_VolumeRatio),");
+
+                            var s = summaries[i];
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Symbol", s.Symbol));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Date", s.Date));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Return1d", (object?)s.Return1d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Return5d", (object?)s.Return5d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Volatility5d", (object?)s.Volatility5d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Volatility10d", (object?)s.Volatility10d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Sma5", (object?)s.Sma5 ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Sma10", (object?)s.Sma10 ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_Rsi14", (object?)s.Rsi14 ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_BollingerBandwidth", (object?)s.BollingerBandwidth ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_VolumeAvg5d", (object?)s.VolumeAvg5d ?? DBNull.Value));
+                            parameters.Add(new Npgsql.NpgsqlParameter($"p{i}_VolumeRatio", (object?)s.VolumeRatio ?? DBNull.Value));
+
+                        }
+
+                        sql.Length--; // Remove last comma
+                        sql.Append(" ON CONFLICT (symbol, date) DO NOTHING;");
+
+
+
+                        Log.Debug("Executing SQL Query for Bulk Insert:" + sql);
+                        // Execute the raw SQL query
+                        int rowsAffected = await context.Database.ExecuteSqlRawAsync(sql.ToString(), parameters.ToArray()); ;
+                        transaction.Commit();
+                        return rowsAffected;
+                    }
+                    catch (Exception ex)
+                    {
+                        // In case of error, roll back the transaction
+                        Log.Error("Failed to insert records into table, Rolling back...", ex);
+                        transaction.Rollback();
+                        return 0;
+                    }
+                }
             }
         }
     }
