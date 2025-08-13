@@ -32,6 +32,7 @@ namespace StockPriceLoader.Models
         public double? VolumeRatio { get; set; }
 
         // Sector & Market Context
+        /*
         [MaxLength(100)]
         public string? Sector { get; set; }
         public double? SectorAvgReturn5d { get; set; }
@@ -51,6 +52,7 @@ namespace StockPriceLoader.Models
         /// 0 = down/stable, 1 = up
         /// </summary>
         public short? LabelDirection { get; set; }
+        */
     }
 
 }

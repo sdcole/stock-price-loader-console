@@ -17,6 +17,8 @@ public class AppDbContext : DbContext
     public DbSet<MinuteBarData> MinuteBars { get; set; }
     public DbSet<DailyBarData> DailyBars { get; set; }
     public DbSet<Sector> Sectors { get; set; }
+    public DbSet<SymbolDailySummary> SymbolDailySummaries { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -150,5 +152,48 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<DailyBarData>()
             .HasIndex(b => new { b.Symbol, b.Timestamp }).IsUnique();
+
+        // Configure SymbolDailySummary entity
+        modelBuilder.Entity<SymbolDailySummary>().ToTable("symbol_daily_summaries");
+        modelBuilder.Entity<DailyBarData>().HasKey(s => s.Id);
+        modelBuilder.Entity<SymbolDailySummary>()
+            .Property(s => s.Id).HasColumnName("id").IsRequired();
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Symbol)
+            .HasColumnName("symbol")
+            .IsRequired()
+            .HasMaxLength(10);
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Date).HasColumnName("date").IsRequired();
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Return1d).HasColumnName("return_1d");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Return5d).HasColumnName("return_5d");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Volatility5d).HasColumnName("volatility_5d");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Volatility10d).HasColumnName("volatility_10d");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Sma5).HasColumnName("sma_5");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Sma10).HasColumnName("sma_10");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.Rsi14).HasColumnName("rsi_14");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.BollingerBandwidth).HasColumnName("bollinger_bandwidth");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.VolumeAvg5d).HasColumnName("volume_avg_5d");
+        modelBuilder.Entity<SymbolDailySummary>().Property(s => s.VolumeRatio).HasColumnName("volume_ratio");
+        /*
+         * 
+         * 
+         * public long Id { get; set; }
+        [Required]
+        public string Symbol { get; set; }
+        [Required]
+        public DateTime Date { get; set; }
+
+        // Price & Volume Features
+        public double? Return1d { get; set; }
+        public double? Return5d { get; set; }
+        public double? Volatility5d { get; set; }
+        public double? Volatility10d { get; set; }
+        public double? Sma5 { get; set; }
+        public double? Sma10 { get; set; }
+        public double? Rsi14 { get; set; }
+        public double? BollingerBandwidth { get; set; }
+        public double? VolumeAvg5d { get; set; }
+        public double? VolumeRatio { get; set; }
+
+        */
     }
 }

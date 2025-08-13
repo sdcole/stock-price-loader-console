@@ -429,17 +429,40 @@ namespace StockPriceLoader
         public static async Task CalculateAndLoadSectorDailySummary(){
             try
             {
+                Log.Information("Begin Calulcating and Loading the Sector Daily Data.");
                 //TODO: Get SymbolDailySummaries and DailyBars from the database and calculate the weighted averages.
                 using (AppDbContext context = new AppDbContext())
                 {   List<Sector> sectorsList = await context.Sectors.ToListAsync();
                     foreach (Sector sector in sectorsList)
                     {
-                        List<Company> companiesList = await context.Companies.Where(d => d.SectorId == sector.Id).ToListAsync();
+                        //Get the company symbol for the sector.
+                        List<string> companySymbols = await context.Companies.Where(d => d.SectorId == sector.Id).Select(d => d.Symbol).ToListAsync();
+                        List<SymbolDailySummary> symbolSummaries = await context.SymbolDailySummaries.Where(d => companySymbols.Contains(d.Symbol)).ToListAsync();
+                        List<DailyBarData> dailyBarDatas = await context.DailyBars.Where(d => companySymbols.Contains(d.Symbol)).ToListAsync();
 
-                        List<SymbolDailySummaries> symbolSummaries = await context.SymbolDailySummaries.ToListAsync());
+                        SectorDailySummary sectorDailySummary = new SectorDailySummary();
+                        //TODO: First thing we need to do is calculate the entire volume for that day for the given sector..
+                        sectorDailySummary.SectorId = sector.Id;
+
+                        sectorDailySummary.SymbolCount = companySymbols.Count;
+                        sectorDailySummary.AvgReturn1D = symbolSummaries.Average(d => d.Return1d);
+                        //GET THE MEDIAN?
+                        sectorDailySummary.MedianReturn1D = symbolSummaries.Select(d => d.Return1d).Median();
+                        sectorDailySummary.AvgReturn5D = symbolSummaries.Average(d => d.Return5d);
+                        //GET THE MEDIAN?
+                        sectorDailySummary.MedianReturn5D = symbolSummaries.Select(d => d.Return5d).Median();
+                        sectorDailySummary.AvgBollingerBandwidth = symbolSummaries.Average(d => d.BollingerBandwidth);
+                        //GET THE MEDIAN?
+                        sectorDailySummary.MedianBollingerBandwidth = symbolSummaries.Select(d => d.BollingerBandwidth).Median();
+                        
+                        //TODO: Then we loop through the individual stock to calculate the weighted average.
                     }
                     
                 }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "There was an issue calculating and loading sector daily summary data.");
             }
             
         }
