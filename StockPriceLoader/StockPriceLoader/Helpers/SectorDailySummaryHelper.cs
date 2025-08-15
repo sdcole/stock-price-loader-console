@@ -11,13 +11,6 @@ namespace StockPriceLoader.Helpers
     public class SectorDailySummaryHelper
     {
 
-        public static async Task<List<Company>> GetCompaniesBySector(string sector)
-        {
-            using (AppDbContext context = new AppDbContext())
-            {
-                return await context.Companies.Where(d => d.Sector.ToUpper() == sector.ToUpper()).ToListAsync();
-            } 
-        }
 
 
 

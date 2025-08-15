@@ -14,6 +14,62 @@ namespace StockPriceLoader.Helpers
     public class SymbolDailySummaryHelper
     {
 
+
+        /**
+         *  CalculateAndLoadDailySummary
+         *  
+         *  This will calculate the day's summary data and load it into the db.
+         * 
+         * 
+         * 
+         **/
+        public static async Task CalculateAndLoadSymbolDailySummary()
+        {
+
+            if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Saturday || DateTime.UtcNow.DayOfWeek == DayOfWeek.Sunday)
+            {
+                Log.Information("Market is closed for the weekend. Skipping daily summary load.");
+                return;
+            }
+
+            Log.Information("Calculating and Loading Daily Summary Data");
+            using (AppDbContext context = new AppDbContext())
+            {
+                try
+                {
+                    List<Company> companies = context.Companies.ToList();
+                    List<SymbolDailySummary> dailySummaries = new List<SymbolDailySummary>();
+                    //This will loop through all companies in the companies table. It appends the data to the get request so the response will contain those tickers.
+                    foreach (Company company in companies)
+                    {
+                        Log.Debug("Calculating Daily Summary for " + company.Symbol);
+                        SymbolDailySummary summary = await SymbolDailySummaryHelper.CalculateDailySummaryForSymbol(company.Symbol);
+
+                        if (summary != null)
+                        {
+                            dailySummaries.Add(summary);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+
+                    }
+                    int insertedSummaries = await SymbolDailySummaryHelper.InsertDailySummaries(dailySummaries);
+                    Log.Information($"Inserted {insertedSummaries} of Daily Summaries.");
+
+
+
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "There was an issue getting Company list from database");
+                }
+            }
+        }
+
+
         /**
          * CalculateDailySummaryForSymbol
          * This function calculates the daily summary for a given symbol.
@@ -43,7 +99,7 @@ namespace StockPriceLoader.Helpers
                     SymbolDailySummary dailySummary = new SymbolDailySummary
                     {
                         Symbol = symbol,
-                        Date = DateTime.UtcNow.Date // Set to today's date
+                        Date = last21.First().Timestamp.Date // Set to today's date
                     };
 
                     //Calculate returns

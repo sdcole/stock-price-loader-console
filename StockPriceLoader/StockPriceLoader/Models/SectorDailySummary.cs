@@ -102,6 +102,6 @@ namespace StockPriceLoader.Models
             [Column("worst_return")]
             public double? WorstReturn { get; set; }
         }
-    }
+ }
 
-}
+
